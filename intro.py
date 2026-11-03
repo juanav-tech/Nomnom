@@ -98,7 +98,7 @@ def enviar_mqtt(payload_dict):
 col_img1, col_img2, col_img3 = st.columns([1, 2, 1])
 with col_img2:
     try:
-        st.image("ilustracion_principal.png", use_column_width=True)
+        st.image("coca.png", use_column_width=True)
     except Exception:
         st.markdown("<div style='text-align: center; color: #E76F51; font-style: italic; font-weight: bold;'>[ Espacio para ilustración estilo boceto / NomNom ]</div>", unsafe_allow_html=True)
 
