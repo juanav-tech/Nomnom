@@ -6,48 +6,64 @@ import time
 import json
 import paho.mqtt.client as paho
 
-# Configuración de página con diseño estético de NomNom
+# Configuración de página con la identidad NomNom
 st.set_page_config(
     page_title="NomNom | Dispensador Inteligente",
     page_icon="🐾",
     layout="centered"
 )
 
-# Estilos CSS personalizados alineados con la identidad visual del proyecto
+# Estilos CSS inspirados en la línea gráfica del PDF (Tonos cálidos, trazos artesanales y tipografía estilizada)
 st.markdown("""
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+
     .stApp {
-        background-color: #0F172A;
-        color: #F8FAFC;
+        background-color: #FDFBF7; /* Fondo cálido tipo papel de boceto */
+        color: #2D2D2D;
+        font-family: 'Montserrat', sans-serif;
     }
+    
     .main-header {
-        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
-        padding: 24px;
-        border-radius: 14px;
-        border-left: 6px solid #F97316;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        background: linear-gradient(135deg, #FFF1E6 0%, #FDE2E4 100%);
+        padding: 25px;
+        border-radius: 16px;
+        border: 2px dashed #E07A5F; /* Simula trazo a mano / lápiz */
+        margin-bottom: 25px;
+        box-shadow: 0 4px 15px rgba(224, 122, 95, 0.1);
         text-align: center;
     }
+
+    .main-header h1 {
+        font-family: 'Arial Black', sans-serif; /* Aproximación limpia a BriceBold Condensed */
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #DDA15E;
+    }
+
     .card {
-        background-color: #1E293B;
+        background-color: #FFFFFF;
         padding: 25px;
-        border-radius: 12px;
-        border: 1px solid #334155;
-        margin-bottom: 15px;
+        border-radius: 16px;
+        border: 2px solid #F4A261; /* Línea estilo boceto */
+        margin-bottom: 20px;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.05);
     }
+
     .stButton>button {
-        background-color: #F97316;
+        background-color: #E76F51;
         color: white;
-        border-radius: 8px;
+        border-radius: 10px;
         font-weight: bold;
-        border: none;
+        border: 2px solid #2D2D2D;
         width: 100%;
-        padding: 10px;
+        padding: 12px;
+        box-shadow: 2px 2px 0px #2D2D2D; /* Efecto retro / boceto */
     }
+
     .stButton>button:hover {
-        background-color: #EA580C;
-        color: white;
+        background-color: #F4A261;
+        color: #2D2D2D;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -68,65 +84,74 @@ def enviar_mqtt(payload_dict):
     except Exception as e:
         return str(e)
 
-# Encabezado principal de NomNom
+# --- ESPACIO PARA ILUSTRACIÓN PRINCIPAL ---
+# Aquí puedes subir o colocar tu imagen de la línea gráfica del PDF (ej: "nomnom_banner.png")
+col_img1, col_img2, col_img3 = st.columns([1, 2, 1])
+with col_img2:
+    try:
+        # Coloca aquí el nombre de tu archivo de ilustración del PDF
+        st.image("ilustracion_principal.png", use_column_width=True)
+    except Exception:
+        st.markdown("<div style='text-align: center; color: #E76F51; font-style: italic;'>[ Espacio para ilustración estilo boceto / NomNom ]</div>", unsafe_allow_html=True)
+
+# Encabezado principal
 st.markdown("""
     <div class="main-header">
-        <h1 style="color: #FFFFFF; margin: 0; font-size: 28px;">🐾 NomNom - Dispensador Inteligente</h1>
-        <p style="color: #94A3B8; margin: 5px 0 0 0;">Alimenta y cuida a tus mascotas a distancia vía MQTT y Wokwi</p>
+        <h1>🐾 NOMNOM</h1>
+        <p style="color: #6B705C; font-weight: bold; margin: 5px 0 0 0;">Dispensador Inteligente de Alimentos para Mascotas</p>
     </div>
 """, unsafe_allow_html=True)
 
-# Tarjeta de Control por Voz y Botones Manuales
+# Tarjeta de Control Manual de Porciones
 st.markdown('<div class="card">', unsafe_allow_html=True)
-st.subheader("🎙️ Panel de Control Multimodal")
-st.write("Selecciona una porción o utiliza el reconocimiento de voz para activar el dispensador en casa[cite: 7, 10].")
+st.subheader("🍽️ Panel de Alimentación Rápida")
+st.write("Selecciona la porción exacta para tu mascota y envíala de inmediato al dispositivo IoT[cite: 7, 10].")
 
-# Opciones de porciones orientadas al negocio de la app
 tipo_porcion = st.selectbox(
-    "📏 Elige el tamaño de la porción:",
+    "📏 Tamaño de la ración:",
     ["Porción Pequeña (50g)", "Porción Mediana (100g)", "Porción Grande (200g)"]
 )
 
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("🚀 Servir porción ahora"):
+col_btn1, col_btn2 = st.columns(2)
+with col_btn1:
+    if st.button("🚀 Servir Comida"):
         tamano = "pequena" if "Pequeña" in tipo_porcion else ("grande" if "Grande" in tipo_porcion else "mediana")
         resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": tamano})
         if resultado is True:
-            st.success(f"¡Orden enviada con éxito! Ración: {tipo_porcion}")
+            st.success(f"¡Ración {tipo_porcion} enviada al comedero!")
         else:
             st.error(f"Error de conexión MQTT: {resultado}")
 
-with col2:
+with col_btn2:
     if st.button("🔒 Cerrar Compuerta"):
         resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar"})
         if resultado is True:
-            st.warning("Comando de cierre enviado al dispensador físico.")
+            st.warning("Comando de cierre enviado con éxito.")
         else:
             st.error(f"Error de conexión MQTT: {resultado}")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# Módulo de Reconocimiento de Voz Nativo por Navegador (Sin errores de importación JS)
+# Módulo de Reconocimiento de Voz
 st.markdown('<div class="card">', unsafe_allow_html=True)
-st.subheader("🗣️ Asistente por Voz integrado")
-st.write("Di comandos como **'servir comida'** o **'porción grande'** directamente desde tu micrófono:")
+st.subheader("🎙️ Asistente por Voz")
+st.write("Habla con tu app para activar el dispensador de forma remota:")
 
-语音_html = """
+voz_html = """
 <div style="text-align: center; padding: 10px;">
     <button id="voice-btn" style="
-        background-color: #38BDF8; 
-        color: #0F172A; 
-        border: none; 
+        background-color: #2A9D8F; 
+        color: white; 
+        border: 2px solid #2D2D2D; 
         padding: 12px 24px; 
-        border-radius: 8px; 
+        border-radius: 10px; 
         font-weight: bold; 
         font-size: 16px; 
         cursor: pointer;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+        box-shadow: 2px 2px 0px #2D2D2D;">
         🎙️ Presionar para Hablar
     </button>
-    <p id="voice-status" style="color: #94A3B8; margin-top: 10px; font-size: 14px;"></p>
+    <p id="voice-status" style="color: #6B705C; margin-top: 10px; font-size: 14px;"></p>
 </div>
 
 <script>
@@ -145,16 +170,14 @@ st.write("Di comandos como **'servir comida'** o **'porción grande'** directame
         recognition.lang = 'es-ES';
 
         recognition.onstart = function() {
-            vStatus.innerText = "Escuchando instrucción para la mascota...";
-            vBtn.style.backgroundColor = "#F43F5E";
+            vStatus.innerText = "Escuchando instrucción...";
+            vBtn.style.backgroundColor = "#E76F51";
             vBtn.innerText = "🔴 Escuchando...";
         };
 
         recognition.onresult = function(event) {
             const speechResult = event.results[0][0].transcript;
-            vStatus.innerText = "Comando reconodido: " + speechResult;
-            
-            // Comunica el resultado a Streamlit
+            vStatus.innerText = "Comando reconocido: " + speechResult;
             window.parent.postMessage({type: 'streamlit:setComponentValue', value: speechResult}, '*');
         };
 
@@ -171,21 +194,20 @@ st.write("Di comandos como **'servir comida'** o **'porción grande'** directame
     };
 
     function resetVButton() {
-        vBtn.style.backgroundColor = "#38BDF8";
+        vBtn.style.backgroundColor = "#2A9D8F";
         vBtn.innerText = "🎙️ Presionar para Hablar";
     }
 </script>
 """
 
-components.html(语音_html, height=130)
+components.html(voz_html, height=130)
 
-# Campo de respaldo por texto manual sincronizado con MQTT
-comando_voz = st.text_input("O ingresa tu comando de voz en texto:", key="txt_voz")
+comando_voz = st.text_input("O escribe tu instrucción manual:", key="txt_voz")
 if comando_voz:
-    st.info(f"Procesando instrucción: **{comando_voz}**")
+    st.info(f"Procesando: **{comando_voz}**")
     res = enviar_mqtt({"dispositivo": "voz", "Act1": comando_voz.strip()})
     if res is True:
-        st.success("📡 ¡Comando de voz transmitido a Wokwi exitosamente!")
+        st.success("📡 ¡Instrucción transmitida a Wokwi exitosamente!")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
