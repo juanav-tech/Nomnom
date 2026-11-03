@@ -13,7 +13,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Estilos CSS con contraste optimizado para una lectura perfecta
+# Estilos CSS con contraste optimizado (incluyendo corrección para las alertas de éxito/advertencia)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
@@ -58,6 +58,12 @@ st.markdown("""
     /* Textos dentro de las tarjetas con alta visibilidad */
     .card h3, .card p, .card label, .stMarkdown {
         color: #2D2D2D !important;
+    }
+
+    /* FORZAR CONTRASTE EN ALERTAS (st.success, st.warning, st.error, st.info) */
+    .stAlert p, .stAlert span, div[data-baseweb="notification"] div {
+        color: #1F2937 !important;
+        font-weight: 700 !important;
     }
 
     .stButton>button {
