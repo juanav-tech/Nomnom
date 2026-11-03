@@ -13,7 +13,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Estilos CSS inspirados en la línea gráfica del PDF (Tonos cálidos, trazos artesanales y tipografía estilizada)
+# Estilos CSS con contraste optimizado para una lectura perfecta
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
@@ -28,26 +28,36 @@ st.markdown("""
         background: linear-gradient(135deg, #FFF1E6 0%, #FDE2E4 100%);
         padding: 25px;
         border-radius: 16px;
-        border: 2px dashed #E07A5F; /* Simula trazo a mano / lápiz */
+        border: 2px dashed #E07A5F;
         margin-bottom: 25px;
         box-shadow: 0 4px 15px rgba(224, 122, 95, 0.1);
         text-align: center;
     }
 
     .main-header h1 {
-        font-family: 'Arial Black', sans-serif; /* Aproximación limpia a BriceBold Condensed */
+        font-family: 'Arial Black', sans-serif;
         text-transform: uppercase;
         letter-spacing: 1px;
         color: #DDA15E;
+    }
+
+    .main-header p {
+        color: #4A4E69 !important;
+        font-weight: 700;
     }
 
     .card {
         background-color: #FFFFFF;
         padding: 25px;
         border-radius: 16px;
-        border: 2px solid #F4A261; /* Línea estilo boceto */
+        border: 2px solid #F4A261;
         margin-bottom: 20px;
         box-shadow: 0 6px 16px rgba(0,0,0,0.05);
+    }
+
+    /* Textos dentro de las tarjetas con alta visibilidad */
+    .card h3, .card p, .card label, .stMarkdown {
+        color: #2D2D2D !important;
     }
 
     .stButton>button {
@@ -58,7 +68,7 @@ st.markdown("""
         border: 2px solid #2D2D2D;
         width: 100%;
         padding: 12px;
-        box-shadow: 2px 2px 0px #2D2D2D; /* Efecto retro / boceto */
+        box-shadow: 2px 2px 0px #2D2D2D;
     }
 
     .stButton>button:hover {
@@ -85,20 +95,18 @@ def enviar_mqtt(payload_dict):
         return str(e)
 
 # --- ESPACIO PARA ILUSTRACIÓN PRINCIPAL ---
-# Aquí puedes subir o colocar tu imagen de la línea gráfica del PDF (ej: "nomnom_banner.png")
 col_img1, col_img2, col_img3 = st.columns([1, 2, 1])
 with col_img2:
     try:
-        # Coloca aquí el nombre de tu archivo de ilustración del PDF
-        st.image("coca.png", use_column_width=True)
+        st.image("ilustracion_principal.png", use_column_width=True)
     except Exception:
-        st.markdown("<div style='text-align: center; color: #E76F51; font-style: italic;'>[ Espacio para ilustración estilo boceto / NomNom ]</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align: center; color: #E76F51; font-style: italic; font-weight: bold;'>[ Espacio para ilustración estilo boceto / NomNom ]</div>", unsafe_allow_html=True)
 
 # Encabezado principal
 st.markdown("""
     <div class="main-header">
         <h1>🐾 NOMNOM</h1>
-        <p style="color: #6B705C; font-weight: bold; margin: 5px 0 0 0;">Dispensador Inteligente de Alimentos para Mascotas</p>
+        <p>Dispensador Inteligente de Alimentos para Mascotas</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -151,7 +159,7 @@ voz_html = """
         box-shadow: 2px 2px 0px #2D2D2D;">
         🎙️ Presionar para Hablar
     </button>
-    <p id="voice-status" style="color: #6B705C; margin-top: 10px; font-size: 14px;"></p>
+    <p id="voice-status" style="color: #2D2D2D; margin-top: 10px; font-size: 14px; font-weight: 600;"></p>
 </div>
 
 <script>
