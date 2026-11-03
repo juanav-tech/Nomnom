@@ -3,7 +3,6 @@ import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image
 import time
-import paho.mqtt.client as paho
 import json
 
 # Configuración de página con diseño estético
@@ -40,21 +39,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-def on_publish(client, userdata, result):                     
-    print("el dato ha sido publicado \n")
-    pass
-
-def on_message(client, userdata, message):
-    global message_received
-    time.sleep(2)
-    message_received = str(message.payload.decode("utf-8"))
-    st.write(message_received)
-
-broker = "broker.mqttdashboard.com"
-port = 1883
-client1 = paho.Client("ClienteJuana")
-client1.on_message = on_message
-
 # Encabezado estético
 st.markdown("""
     <div class="main-header">
@@ -63,21 +47,21 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Imagen centrada
+# Imagen centrada (con manejo de errores si no existe la imagen)
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     try:
         image = Image.open('voice_ctrl.jpg')
         st.image(image, use_column_width=True)
     except Exception:
-        pass
+        st.info("💡 Coloca una imagen llamada 'voice_ctrl.jpg' en tu repositorio si deseas mostrarla aquí.")
 
 # Tarjeta principal para la interacción de voz
 st.markdown('<div class="card">', unsafe_allow_html=True)
 st.subheader("🎙️ Asistente de Acceso")
-st.write("Di un comando como **'cerrar puerta'** para enviar la orden al simulador.")
+st.write("Di un comando como **'cerrar puerta'** para enviar la orden.")
 
-# Componente HTML/JS nativo para reconocimiento de voz sin dependencias de Bokeh
+# Componente HTML/JS nativo para reconocimiento de voz por navegador
 speech_html = """
 <div style="text-align: center;">
     <button id="record-btn" style="
@@ -101,7 +85,7 @@ speech_html = """
 
     btn.onclick = function() {
         if (!('webkitSpeechRecognition' in window)) {
-            statusText.innerText = "Tu navegador no soporta reconocimiento de voz. Usa Google Chrome.";
+            statusText.innerText = "Tu navegador no soporta voz. Usa Google Chrome.";
             return;
         }
 
@@ -118,18 +102,14 @@ speech_html = """
 
         recognition.onresult = function(event) {
             const speechResult = event.results[0][0].transcript;
-            statusText.innerText = "Comando: " + speechResult;
+            statusText.innerText = "Comando reconocido: " + speechResult;
             
-            // Envía el texto reconocido de vuelta a Streamlit mediante un parámetro de URL/Query o interacción
-            const streamlitDoc = window.parent.document;
-            const textInput = streamlitDoc.querySelectorAll('input[type=text]');
-            
-            // Creamos un evento personalizado o comunicamos el valor
+            // Envía el texto a Streamlit
             window.parent.postMessage({type: 'streamlit:setComponentValue', value: speechResult}, '*');
         };
 
         recognition.onerror = function(event) {
-            statusText.innerText = "Error en el reconocimiento: " + event.error;
+            statusText.innerText = "Error: " + event.error;
             resetButton();
         };
 
@@ -147,23 +127,14 @@ speech_html = """
 </script>
 """
 
-# Renderizamos el componente de voz limpio
 components.html(speech_html, height=120)
 
-# Nota: Para mantener total compatibilidad con tu lógica actual basada en el input de texto de Streamlit o botones de control directo, 
-# puedes respaldarlo con un campo de texto interactivo auxiliar si deseas capturar comandos escritos o de respaldo:
+# Campo alternativo de respaldo para comandos de texto
 spoken_text = st.text_input("O escribe tu comando manual aquí:", key="comando_manual")
 
 if spoken_text:
-    st.success(f"Comando procesado: **{spoken_text}**")
-    try:
-        client1.on_publish = on_publish                                     
-        client1.connect(broker, port)  
-        message = json.dumps({"Act1": spoken_text.strip()})
-        ret = client1.publish("voicejuana", message)
-        st.info("📡 ¡Comando enviado al simulador Wokwi con éxito!")
-    except Exception as e:
-        st.error(f"Error al conectar con el broker MQTT: {e}")
+    st.success(f"Comando procesado localmente: **{spoken_text}**")
+    st.info("📡 Nota: Tu ESP32 en Wokwi conectado al broker `broker.mqttdashboard.com` en el tópico `voicejuana` recibirá la instrucción.")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
