@@ -119,7 +119,7 @@ st.markdown("""
 # Tarjeta de Control Manual de Porciones
 st.markdown('<div class="card">', unsafe_allow_html=True)
 st.subheader("🍽️ Panel de Alimentación Rápida")
-st.write("Selecciona la porción exacta para tu mascota y envíala de inmediato al dispositivo IoT[cite: 7, 10].")
+st.write("Selecciona la porción exacta para tu mascota y envíala de inmediato al dispositivo")
 
 tipo_porcion = st.selectbox(
     "📏 Tamaño de la ración:",
