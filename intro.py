@@ -276,4 +276,86 @@ if pestana == "🏠 Panel de Control e IoT":
         captured_text = comando_voz
 
     # Filtrado y validación estricta de los 4 comandos permitidos con cambio de color en el bombillo
-    if captured_
+    if captured_text:
+        cmd_lower = captured_text.strip().lower()
+        st.info(f"Procesando comando: **{captured_text}**")
+        
+        es_porcion_pequena = "pequeña" in cmd_lower or "pequena" in cmd_lower
+        es_porcion_mediana = "mediana" in cmd_lower
+        es_porcion_grande = "grande" in cmd_lower
+        es_cerrar = "cerrar" in cmd_lower
+
+        if es_cerrar:
+            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar", "status": "RED"})
+            if res is True:
+                st.warning("🔒 ¡Compuerta cerrada! Bombillo cambiado a luz roja en Wokwi.")
+            else:
+                st.error(f"Error de conexión MQTT: {res}")
+                
+        elif es_porcion_pequena or es_porcion_mediana or es_porcion_grande:
+            porcion_str = "pequena" if es_porcion_pequena else ("grande" if es_porcion_grande else "mediana")
+            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": porcion_str, "status": "GREEN"})
+            if res is True:
+                st.success(f"📡 ¡Comando detectado! Ración enviada y bombillo verde encendido en Wokwi.")
+            else:
+                st.error(f"Error al enviar por MQTT: {res}")
+        else:
+            st.error("⚠️ Comando no reconocido. Solo se permite: 'Porción pequeña', 'Porción mediana', 'Porción grande' o 'Cerrar compuerta'.")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# =========================================================================
+# MÓDULO 2: CÁMARA Y MONITOREO HOGAREÑO CON foto2.png (CLASE 1)
+# =========================================================================
+elif pestana == "👁️ Cámara y Monitoreo Hogareño":
+    
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.subheader("📹 Monitoreo en Directo desde Casa")
+    
+    try:
+        imagen_foto2 = Image.open("foto2.png")
+        st.image(imagen_foto2, use_column_width=True)
+    except Exception:
+        pass
+
+    st.markdown("Aquí puedes observar la comida de tu mascota en tiempo real a través de la cámara del hogar.")
+
+    modelo, clases = cargar_modelo_teachable()
+
+    if modelo is None:
+        st.error("⚠️ No se pudieron cargar los archivos `keras_model.h5` o `labels.txt` en el repositorio.")
+    else:
+        captura_camara = st.camera_input("Vista del plato en casa")
+
+        if captura_camara is not None:
+            image = Image.open(captura_camara).convert("RGB")
+            
+            size = (224, 224)
+            image_resized = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
+            image_array = np.asarray(image_resized)
+            
+            normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1
+            data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
+            data[0] = normalized_image_array
+
+            prediccion = modelo.predict(data)
+            indice_clase = np.argmax(prediccion[0])
+            clase_detectada = clases[indice_clase]
+            confianza = float(prediccion[0][indice_clase]) * 100
+
+            st.divider()
+            st.markdown("### 🔍 Análisis del Comedero:")
+
+            if indice_clase == 1 or "clase 1" in clase_detectada.lower() or "lleno" in clase_detectada.lower() or "comida" in clase_detectada.lower():
+                st.success("🟢 Aún hay comida en comedero")
+            else:
+                st.warning("🔴 no se detectó comida en el comedero")
+                
+            st.caption(f"Detalle técnico de IA: Detectado [{clase_detectada}] con {confianza:.1f}% de certeza")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+try:
+    os.mkdir("temp")
+except:
+    pass
