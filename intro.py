@@ -7,6 +7,13 @@ import time
 import json
 import paho.mqtt.client as paho
 
+# Importación segura de OpenAI para Whisper
+try:
+    from openai import OpenAI
+    HAS_OPENAI = True
+except Exception:
+    HAS_OPENAI = False
+
 # Importación segura de TensorFlow y Keras
 try:
     import tensorflow as tf
@@ -114,6 +121,14 @@ st.markdown("""
         color: #2D2D2D !important;
         transform: translateY(-2px);
     }
+
+    /* Grabador de audio nativo */
+    [data-testid="stAudioInput"] {
+        background-color: #FFFFFF !important;
+        border-radius: 18px !important;
+        border: 2px solid #F4A261 !important;
+        padding: 12px !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -167,7 +182,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- BARRA LATERAL CON LA ILUSTRACIÓN foto1.png ---
+# --- BARRA LATERAL CON LA ILUSTRACIÓN foto1.png y OpenAI API Key ---
 with st.sidebar:
     try:
         imagen_foto1 = Image.open("foto1.png")
@@ -175,10 +190,23 @@ with st.sidebar:
     except Exception:
         st.write("🐾 Menú de Control")
         
+    st.markdown("### 🔑 Configuración IA")
+    api_key = st.text_input(
+        "OpenAI API Key (para voz con Whisper):", 
+        type="password", 
+        placeholder="sk-...", 
+        key="main_api_key_input"
+    )
+    if api_key:
+        os.environ['OPENAI_API_KEY'] = api_key
+        st.success("API Key vinculada ✅")
+    else:
+        st.warning("⚠️ Ingrese su API Key para habilitar la transcripción por voz.")
+
     pestana = st.radio("🎛️ Opciones", ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo Hogareño"])
 
 # =========================================================================
-# MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ
+# MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ NATIVO (WHISPER)
 # =========================================================================
 if pestana == "🏠 Panel de Control e IoT":
     
@@ -211,104 +239,42 @@ if pestana == "🏠 Panel de Control e IoT":
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Módulo de Asistente de Voz con protocolo seguro postMessage
+    # Módulo de Asistente de Voz basado en st.audio_input y Whisper AI (igual al ejemplo base)
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("🎙️ Asistente por Voz Inteligente")
-    st.markdown("Habla con tu app para activar el dispensador. Di claramente uno de los siguientes comandos:")
-    
-    st.markdown("""
-        <div style="background-color: #FFF9F5; padding: 12px; border-radius: 10px; border-left: 5px solid #E76F51; margin-bottom: 15px;">
-            <b>📌 Comandos permitidos:</b><br>
-            • <i>"Porción pequeña"</i><br>
-            • <i>"Porción mediana"</i><br>
-            • <i>"Porción grande"</i><br>
-            • <i>"Cerrar compuerta"</i>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown("Graba tu voz diciendo el comando que deseas ejecutar (ej. *'porción pequeña'*, *'porción mediana'*, *'porción grande'*, o *'cerrar compuerta'*):")
 
-    voz_html = """
-    <div style="text-align: center; padding: 10px;">
-        <button id="voice-btn" style="
-            background-color: #2A9D8F; 
-            color: white; 
-            border: 2px solid #2D2D2D; 
-            padding: 12px 24px; 
-            border-radius: 12px; 
-            font-weight: 800; 
-            font-size: 16px; 
-            cursor: pointer;
-            box-shadow: 3px 3px 0px #2D2D2D;">
-            🎙️ Presionar para Hablar
-        </button>
-        <p id="voice-status" style="color: #2D2D2D; margin-top: 15px; font-size: 15px; font-weight: 700;"></p>
-    </div>
+    audio_file = st.audio_input("Grabar instrucción de voz", key="mic_recorder")
 
-    <script>
-        const vBtn = document.getElementById('voice-btn');
-        const vStatus = document.getElementById('voice-status');
+    captured_text = None
 
-        vBtn.onclick = function() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
-                vStatus.innerText = "Tu navegador no soporta reconocimiento de voz. Usa Google Chrome.";
-                return;
-            }
+    if audio_file:
+        if api_key and HAS_OPENAI:
+            with st.spinner("Procesando audio con Whisper AI..."):
+                try:
+                    client_ai = OpenAI(api_key=api_key)
+                    transcript = client_ai.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=audio_file,
+                        language="es"
+                    )
+                    captured_text = transcript.text.strip()
+                    st.info(f"🗣️ *Lo que la IA escuchó:* \"{captured_text}\"")
+                except Exception as e:
+                    st.error(f"Error procesando el audio: {e}")
+        else:
+            st.warning("⚠️ Ingrese su OpenAI API Key en la barra lateral para procesar el audio con Whisper.")
 
-            const recognition = new SpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = false;
-            recognition.lang = 'es-ES';
+    # Opción manual complementaria
+    comando_voz = st.text_input("O escribe tu comando de forma manual:", key="txt_voz", placeholder="Ej: porción pequeña, cerrar compuerta...")
+    if comando_voz:
+        captured_text = comando_voz
 
-            recognition.onstart = function() {
-                vStatus.innerText = "🎧 Escuchando instrucción...";
-                vBtn.style.backgroundColor = "#E76F51";
-                vBtn.innerText = "🔴 Escuchando...";
-            };
-
-            recognition.onresult = function(event) {
-                const speechResult = event.results[0][0].transcript;
-                vStatus.innerText = "💬 Reconocido: " + speechResult;
-                window.parent.postMessage({type: 'streamlit:setComponentValue', value: speechResult}, '*');
-            };
-
-            recognition.onerror = function(event) {
-                vStatus.innerText = "⚠️ Error de voz: " + event.error;
-                resetVButton();
-            };
-
-            recognition.onend = function() {
-                resetVButton();
-            };
-
-            try {
-                recognition.start();
-            } catch(e) {
-                vStatus.innerText = "⚠️ Vuelve a presionar el botón.";
-                resetVButton();
-            }
-        };
-
-        function resetVButton() {
-            vBtn.style.backgroundColor = '#2A9D8F';
-            vBtn.innerText = "🎙️ Presionar para Hablar";
-        }
-    </script>
-    """
-
-    # Captura segura del valor retornado por el componente HTML
-    resultado_voz = components.html(voz_html, height=140)
-
-    # Caja de texto manual con legibilidad garantizada
-    comando_voz = st.text_input("O escribe tu comando de forma manual (ej. cerrar compuerta):", key="txt_voz")
-    
-    # Determinar qué comando procesar (si vino por voz a través del componente o por texto manual)
-    comando_a_procesar = resultado_voz if resultado_voz else comando_voz
-    
-    if comando_a_procesar:
-        cmd_lower = str(comando_a_procesar).strip().lower()
-        st.info(f"Procesando comando: **{comando_a_procesar}**")
+    # Procesamiento del comando detectado (por voz o texto manual)
+    if captured_text:
+        cmd_lower = captured_text.strip().lower()
+        st.info(f"Procesando comando: **{captured_text}**")
         
-        # Lógica para cerrar compuerta y activar luz roja en Wokwi
         if "cerrar" in cmd_lower:
             res = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar"})
             if res is True:
@@ -325,7 +291,7 @@ if pestana == "🏠 Panel de Control e IoT":
     st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================================================================
-# MÓDULO 2: CÁMARA Y MONITOREO HOGAREÑO CON foto2.png (LÓGICA CLASE 1)
+# MÓDULO 2: CÁMARA Y MONITOREO HOGAREÑO CON foto2.png (CLASE 1)
 # =========================================================================
 elif pestana == "👁️ Cámara y Monitoreo Hogareño":
     
@@ -366,7 +332,7 @@ elif pestana == "👁️ Cámara y Monitoreo Hogareño":
             st.divider()
             st.markdown("### 🔍 Análisis del Comedero:")
 
-            # Lógica estricta solicitada: Si es la Clase 1, muestra "Aún hay comida en comedero", sino "Ya se acabó"
+            # Lógica estricta de la Clase 1
             if indice_clase == 1 or "clase 1" in clase_detectada.lower() or "lleno" in clase_detectada.lower() or "comida" in clase_detectada.lower():
                 st.success("🟢 Aún hay comida en comedero")
             else:
