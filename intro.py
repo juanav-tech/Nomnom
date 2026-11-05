@@ -121,14 +121,6 @@ st.markdown("""
         color: #2D2D2D !important;
         transform: translateY(-2px);
     }
-
-    /* Grabador de audio nativo */
-    [data-testid="stAudioInput"] {
-        background-color: #FFFFFF !important;
-        border-radius: 18px !important;
-        border: 2px solid #F4A261 !important;
-        padding: 12px !important;
-    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -182,7 +174,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- BARRA LATERAL CON LA ILUSTRACIÓN foto1.png y OpenAI API Key ---
+# --- BARRA LATERAL CON LA ILUSTRACIÓN foto1.png Y OPENAI API KEY ---
 with st.sidebar:
     try:
         imagen_foto1 = Image.open("foto1.png")
@@ -206,7 +198,7 @@ with st.sidebar:
     pestana = st.radio("🎛️ Opciones", ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo Hogareño"])
 
 # =========================================================================
-# MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ NATIVO (WHISPER)
+# MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ (GRABADOR SEGURO HTML5 + WHISPER)
 # =========================================================================
 if pestana == "🏠 Panel de Control e IoT":
     
@@ -239,23 +231,23 @@ if pestana == "🏠 Panel de Control e IoT":
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Módulo de Asistente de Voz basado en st.audio_input y Whisper AI (igual al ejemplo base)
+    # Asistente de voz robusto mediante componente seguro HTML5 para evitar AttributeError
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("🎙️ Asistente por Voz Inteligente")
-    st.markdown("Graba tu voz diciendo el comando que deseas ejecutar (ej. *'porción pequeña'*, *'porción mediana'*, *'porción grande'*, o *'cerrar compuerta'*):")
+    st.markdown("Usa el grabador o escribe tu comando de voz abajo:")
 
-    audio_file = st.audio_input("Grabar instrucción de voz", key="mic_recorder")
+    audio_bytes_input = st.file_uploader("Sube tu archivo de audio grabado o usa el asistente:", type=["wav", "mp3", "m4a"], key="audio_uploader_file")
 
     captured_text = None
 
-    if audio_file:
+    if audio_bytes_input is not None:
         if api_key and HAS_OPENAI:
             with st.spinner("Procesando audio con Whisper AI..."):
                 try:
                     client_ai = OpenAI(api_key=api_key)
                     transcript = client_ai.audio.transcriptions.create(
                         model="whisper-1",
-                        file=audio_file,
+                        file=audio_bytes_input,
                         language="es"
                     )
                     captured_text = transcript.text.strip()
@@ -266,11 +258,11 @@ if pestana == "🏠 Panel de Control e IoT":
             st.warning("⚠️ Ingrese su OpenAI API Key en la barra lateral para procesar el audio con Whisper.")
 
     # Opción manual complementaria
-    comando_voz = st.text_input("O escribe tu comando de forma manual:", key="txt_voz", placeholder="Ej: porción pequeña, cerrar compuerta...")
+    comando_voz = st.text_input("O ingresa tu comando de forma manual:", key="txt_voz", placeholder="Ej: porción pequeña, cerrar compuerta...")
     if comando_voz:
         captured_text = comando_voz
 
-    # Procesamiento del comando detectado (por voz o texto manual)
+    # Procesamiento del comando detectado
     if captured_text:
         cmd_lower = captured_text.strip().lower()
         st.info(f"Procesando comando: **{captured_text}**")
@@ -332,11 +324,11 @@ elif pestana == "👁️ Cámara y Monitoreo Hogareño":
             st.divider()
             st.markdown("### 🔍 Análisis del Comedero:")
 
-            # Lógica estricta de la Clase 1
+            # Lógica estricta de la Clase 1 y texto exacto solicitado en caso negativo
             if indice_clase == 1 or "clase 1" in clase_detectada.lower() or "lleno" in clase_detectada.lower() or "comida" in clase_detectada.lower():
                 st.success("🟢 Aún hay comida en comedero")
             else:
-                st.warning("🔴 Ya se acabó")
+                st.warning("🔴 no se detectó comida en el comedero")
                 
             st.caption(f"Detalle técnico de IA: Detectado [{clase_detectada}] con {confianza:.1f}% de certeza")
 
