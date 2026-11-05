@@ -131,21 +131,21 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Configuración MQTT con tu tópico 'voicejuana'
+# Configuración MQTT robusta compatible con paho-mqtt < 2.0.0
 broker = "broker.mqttdashboard.com"
 port = 1883
 mqtt_topic = "voicejuana"
 
 def enviar_mqtt(payload_dict):
     try:
-        client1 = paho.Client("ClienteJuana")
-        client1.connect(broker, port, keepalive=60)
-        client1.loop_start()
+        client = paho.Client(f"NomNomClient_{int(time.time())}")
+        client.connect(broker, port, keepalive=60)
+        client.loop_start()
         mensaje = json.dumps(payload_dict)
-        info = client1.publish(mqtt_topic, mensaje)
+        info = client.publish(mqtt_topic, mensaje)
         info.wait_for_publish(timeout=3)
-        client1.loop_stop()
-        client1.disconnect()
+        client.loop_stop()
+        client.disconnect()
         return True
     except Exception as e:
         return str(e)
@@ -220,7 +220,7 @@ if pestana == "🏠 Panel de Control e IoT":
             tamano = "pequena" if "Pequeña" in tipo_porcion else ("grande" if "Grande" in tipo_porcion else "mediana")
             resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": tamano, "status": "GREEN"})
             if resultado is True:
-                st.success(f"¡Ración {tipo_porcion} enviada al comedero correctamente! (Bombillo Verde)")
+                st.success(f"¡Ración {tipo_porcion} enviada y bombillo en VERDE!")
             else:
                 st.error(f"Error de conexión MQTT: {resultado}")
 
@@ -228,7 +228,7 @@ if pestana == "🏠 Panel de Control e IoT":
         if st.button("🔒 Cerrar Compuerta"):
             resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar", "status": "RED"})
             if resultado is True:
-                st.warning("Comando de cierre enviado con éxito (Bombillo Rojo en Wokwi).")
+                st.warning("Comando de cierre enviado y bombillo en ROJO.")
             else:
                 st.error(f"Error de conexión MQTT: {resultado}")
 
@@ -288,7 +288,7 @@ if pestana == "🏠 Panel de Control e IoT":
         if es_cerrar:
             res = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar", "status": "RED"})
             if res is True:
-                st.warning("🔒 ¡Compuerta cerrada! Bombillo cambiado a luz roja en Wokwi.")
+                st.warning("🔒 ¡Compuerta cerrada! Bombillo cambiado a luz ROJA en Wokwi.")
             else:
                 st.error(f"Error de conexión MQTT: {res}")
                 
@@ -296,7 +296,7 @@ if pestana == "🏠 Panel de Control e IoT":
             porcion_str = "pequena" if es_porcion_pequena else ("grande" if es_porcion_grande else "mediana")
             res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": porcion_str, "status": "GREEN"})
             if res is True:
-                st.success(f"📡 ¡Comando detectado! Ración enviada y bombillo verde encendido en Wokwi.")
+                st.success(f"📡 ¡Comando detectado! Ración enviada y bombillo VERDE encendido en Wokwi.")
             else:
                 st.error(f"Error al enviar por MQTT: {res}")
         else:
