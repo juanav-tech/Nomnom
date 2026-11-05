@@ -1,10 +1,19 @@
 import os
 import streamlit as st
 import streamlit.components.v1 as components
-from PIL import Image
+from PIL import Image, ImageOps
+import numpy as np
 import time
 import json
 import paho.mqtt.client as paho
+
+# Intentamos importar tensorflow de manera segura
+try:
+    import tensorflow as tf
+    from keras.models import load_model
+    TF_DISPONIBLE = True
+except Exception:
+    TF_DISPONIBLE = False
 
 # Configuración de página con la identidad NomNom
 st.set_page_config(
@@ -13,13 +22,13 @@ st.set_page_config(
     layout="centered"
 )
 
-# Estilos CSS con contraste optimizado (incluyendo corrección para las alertas de éxito/advertencia)
+# Estilos CSS con la línea gráfica artesanal y contraste optimizado
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
 
     .stApp {
-        background-color: #FDFBF7; /* Fondo cálido tipo papel de boceto */
+        background-color: #FDFBF7;
         color: #2D2D2D;
         font-family: 'Montserrat', sans-serif;
     }
@@ -55,12 +64,10 @@ st.markdown("""
         box-shadow: 0 6px 16px rgba(0,0,0,0.05);
     }
 
-    /* Textos dentro de las tarjetas con alta visibilidad */
     .card h3, .card p, .card label, .stMarkdown {
         color: #2D2D2D !important;
     }
 
-    /* FORZAR CONTRASTE EN ALERTAS (st.success, st.warning, st.error, st.info) */
     .stAlert p, .stAlert span, div[data-baseweb="notification"] div {
         color: #1F2937 !important;
         font-weight: 700 !important;
@@ -100,15 +107,28 @@ def enviar_mqtt(payload_dict):
     except Exception as e:
         return str(e)
 
-# --- ESPACIO PARA ILUSTRACIÓN PRINCIPAL ---
+# Función para cargar el modelo de Teachable Machine en caché
+@st.cache_resource
+def cargar_modelo_ia():
+    if not TF_DISPONIBLE:
+        return None, None
+    try:
+        # Deshabilitar advertencias de compilación
+        model = load_model('keras_model.h5', compile=False)
+        with open('labels.txt', 'r', encoding='utf-8') as f:
+            class_names = [line.strip() for line in f.readlines()]
+        return model, class_names
+    except Exception as e:
+        return None, None
+
+# --- ENCABEZADO Y ESPACIO PARA ILUSTRACIÓN ---
 col_img1, col_img2, col_img3 = st.columns([1, 2, 1])
 with col_img2:
     try:
-        st.image("coca.png", use_column_width=True)
+        st.image("ilustracion_principal.png", use_column_width=True)
     except Exception:
         st.markdown("<div style='text-align: center; color: #E76F51; font-style: italic; font-weight: bold;'>[ Espacio para ilustración estilo boceto / NomNom ]</div>", unsafe_allow_html=True)
 
-# Encabezado principal
 st.markdown("""
     <div class="main-header">
         <h1>🐾 NOMNOM</h1>
@@ -116,114 +136,169 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Tarjeta de Control Manual de Porciones
-st.markdown('<div class="card">', unsafe_allow_html=True)
-st.subheader("🍽️ Panel de Alimentación Rápida")
-st.write("Selecciona la porción exacta para tu mascota y envíala de inmediato al dispositivo")
+# Menú de navegación lateral o pestañas para separar funciones
+pestana = st.sidebar.radio("🎛️ Navegación", ["🏠 Panel de Control e IoT", "👁️ IA: Estado del Plato (Teachable Machine)"])
 
-tipo_porcion = st.selectbox(
-    "📏 Tamaño de la ración:",
-    ["Porción Pequeña (50g)", "Porción Mediana (100g)", "Porción Grande (200g)"]
-)
+# =========================================================================
+# MÓDULO 1: CONTROL MANUAL Y VOZ (MQTT & WOKWI)
+# =========================================================================
+if pestana == "🏠 Panel de Control e IoT":
+    
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.subheader("🍽️ Panel de Alimentación Rápida")
+    st.write("Selecciona la porción exacta para tu mascota y envíala al dispositivo IoT[cite: 7, 10].")
 
-col_btn1, col_btn2 = st.columns(2)
-with col_btn1:
-    if st.button("🚀 Servir Comida"):
-        tamano = "pequena" if "Pequeña" in tipo_porcion else ("grande" if "Grande" in tipo_porcion else "mediana")
-        resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": tamano})
-        if resultado is True:
-            st.success(f"¡Ración {tipo_porcion} enviada al comedero!")
-        else:
-            st.error(f"Error de conexión MQTT: {resultado}")
+    tipo_porcion = st.selectbox(
+        "📏 Tamaño de la ración:",
+        ["Porción Pequeña (50g)", "Porción Mediana (100g)", "Porción Grande (200g)"]
+    )
 
-with col_btn2:
-    if st.button("🔒 Cerrar Compuerta"):
-        resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar"})
-        if resultado is True:
-            st.warning("Comando de cierre enviado con éxito.")
-        else:
-            st.error(f"Error de conexión MQTT: {resultado}")
+    col_btn1, col_btn2 = st.columns(2)
+    with col_btn1:
+        if st.button("🚀 Servir Comida"):
+            tamano = "pequena" if "Pequeña" in tipo_porcion else ("grande" if "Grande" in tipo_porcion else "mediana")
+            resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": tamano})
+            if resultado is True:
+                st.success(f"¡Ración {tipo_porcion} enviada al comedero!")
+            else:
+                st.error(f"Error de conexión MQTT: {resultado}")
 
-st.markdown('</div>', unsafe_allow_html=True)
+    with col_btn2:
+        if st.button("🔒 Cerrar Compuerta"):
+            resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar"})
+            if resultado is True:
+                st.warning("Comando de cierre enviado con éxito.")
+            else:
+                st.error(f"Error de conexión MQTT: {resultado}")
 
-# Módulo de Reconocimiento de Voz
-st.markdown('<div class="card">', unsafe_allow_html=True)
-st.subheader("🎙️ Asistente por Voz")
-st.write("Habla con tu app para activar el dispensador de forma remota:")
+    st.markdown('</div>', unsafe_allow_html=True)
 
-voz_html = """
-<div style="text-align: center; padding: 10px;">
-    <button id="voice-btn" style="
-        background-color: #2A9D8F; 
-        color: white; 
-        border: 2px solid #2D2D2D; 
-        padding: 12px 24px; 
-        border-radius: 10px; 
-        font-weight: bold; 
-        font-size: 16px; 
-        cursor: pointer;
-        box-shadow: 2px 2px 0px #2D2D2D;">
-        🎙️ Presionar para Hablar
-    </button>
-    <p id="voice-status" style="color: #2D2D2D; margin-top: 10px; font-size: 14px; font-weight: 600;"></p>
-</div>
+    # Módulo de Reconocimiento de Voz
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.subheader("🎙️ Asistente por Voz")
+    st.write("Habla con tu app para activar el dispensador de forma remota:")
 
-<script>
-    const vBtn = document.getElementById('voice-btn');
-    const vStatus = document.getElementById('voice-status');
+    voz_html = """
+    <div style="text-align: center; padding: 10px;">
+        <button id="voice-btn" style="
+            background-color: #2A9D8F; 
+            color: white; 
+            border: 2px solid #2D2D2D; 
+            padding: 12px 24px; 
+            border-radius: 10px; 
+            font-weight: bold; 
+            font-size: 16px; 
+            cursor: pointer;
+            box-shadow: 2px 2px 0px #2D2D2D;">
+            🎙️ Presionar para Hablar
+        </button>
+        <p id="voice-status" style="color: #2D2D2D; margin-top: 10px; font-size: 14px; font-weight: 600;"></p>
+    </div>
 
-    vBtn.onclick = function() {
-        if (!('webkitSpeechRecognition' in window)) {
-            vStatus.innerText = "Tu navegador no soporta voz. Usa Google Chrome.";
-            return;
+    <script>
+        const vBtn = document.getElementById('voice-btn');
+        const vStatus = document.getElementById('voice-status');
+
+        vBtn.onclick = function() {
+            if (!('webkitSpeechRecognition' in window)) {
+                vStatus.innerText = "Tu navegador no soporta voz. Usa Google Chrome.";
+                return;
+            }
+
+            const recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'es-ES';
+
+            recognition.onstart = function() {
+                vStatus.innerText = "Escuchando instrucción...";
+                vBtn.style.backgroundColor = "#E76F51";
+                vBtn.innerText = "🔴 Escuchando...";
+            };
+
+            recognition.onresult = function(event) {
+                const speechResult = event.results[0][0].transcript;
+                vStatus.innerText = "Comando reconocido: " + speechResult;
+                window.parent.postMessage({type: 'streamlit:setComponentValue', value: speechResult}, '*');
+            };
+
+            recognition.onerror = function(event) {
+                vStatus.innerText = "Error: " + event.error;
+                resetVButton();
+            };
+
+            recognition.onend = function() {
+                resetVButton();
+            };
+
+            recognition.start();
+        };
+
+        function resetVButton() {
+            vBtn.style.backgroundColor = "#2A9D8F";
+            vBtn.innerText = "🎙️ Presionar para Hablar";
         }
+    </script>
+    """
 
-        const recognition = new webkitSpeechRecognition();
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'es-ES';
+    components.html(voz_html, height=130)
 
-        recognition.onstart = function() {
-            vStatus.innerText = "Escuchando instrucción...";
-            vBtn.style.backgroundColor = "#E76F51";
-            vBtn.innerText = "🔴 Escuchando...";
-        };
+    comando_voz = st.text_input("O escribe tu instrucción manual:", key="txt_voz")
+    if comando_voz:
+        st.info(f"Procesando: **{comando_voz}**")
+        res = enviar_mqtt({"dispositivo": "voz", "Act1": comando_voz.strip()})
+        if res is True:
+            st.success("📡 ¡Instrucción transmitida a Wokwi exitosamente!")
 
-        recognition.onresult = function(event) {
-            const speechResult = event.results[0][0].transcript;
-            vStatus.innerText = "Comando reconocido: " + speechResult;
-            window.parent.postMessage({type: 'streamlit:setComponentValue', value: speechResult}, '*');
-        };
+    st.markdown('</div>', unsafe_allow_html=True)
 
-        recognition.onerror = function(event) {
-            vStatus.innerText = "Error: " + event.error;
-            resetVButton();
-        };
+# =========================================================================
+# MÓDULO 2: VISIÓN ARTIFICIAL (TEACHABLE MACHINE / KERAS)
+# =========================================================================
+elif pestana == "👁️ IA: Estado del Plato (Teachable Machine)":
+    
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.subheader("🤖 Detector de Comida en el Plato")
+    st.write("Usa la cámara de tu dispositivo para analizar si el plato de tu mascota tiene comida o está vacío.")
 
-        recognition.onend = function() {
-            resetVButton();
-        };
+    modelo, clases = cargar_modelo_ia()
 
-        recognition.start();
-    };
+    if modelo is None:
+        st.error("⚠️ No se encontró el archivo `keras_model.h5` o `labels.txt` en el repositorio. Súbelo a GitHub para activar la IA.")
+    else:
+        # Captura de imagen nativa con la cámara del dispositivo
+        foto_plato = st.camera_input("📸 Toma una foto del plato de comida")
 
-    function resetVButton() {
-        vBtn.style.backgroundColor = "#2A9D8F";
-        vBtn.innerText = "🎙️ Presionar para Hablar";
-    }
-</script>
-"""
+        if foto_plato is not None:
+            image = Image.open(foto_plato).convert("RGB")
+            
+            # Preprocesamiento estándar para Teachable Machine (224x224 y normalización)
+            size = (224, 224)
+            image_resized = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
+            image_array = np.asarray(image_resized)
+            
+            # Normalizar la imagen (escala -1 a 1 o 0 a 1 dependiendo del modelo)
+            normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1
+            data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
+            data[0] = normalized_image_array
 
-components.html(voz_html, height=130)
+            # Realizar predicción
+            prediccion = modelo.predict(data)
+            indice_clase = np.argmax(prediccion[0])
+            clase_detectada = clases[indice_clase]
+            confianza = float(prediccion[0][indice_clase]) * 100
 
-comando_voz = st.text_input("O escribe tu instrucción manual:", key="txt_voz")
-if comando_voz:
-    st.info(f"Procesando: **{comando_voz}**")
-    res = enviar_mqtt({"dispositivo": "voz", "Act1": comando_voz.strip()})
-    if res is True:
-        st.success("📡 ¡Instrucción transmitida a Wokwi exitosamente!")
+            st.divider()
+            st.write(f"### 🔍 Resultado del análisis:")
+            st.success(f"Estado detectado: **{clase_detectada}** (Confianza: {confianza:.2f}%)")
 
-st.markdown('</div>', unsafe_allow_html=True)
+            # Acción automática opcional basada en IA
+            if "vacio" in clase_detectada.lower() or "empty" in clase_detectada.lower():
+                st.warning("⚠️ El plato está vacío. Puedes activar una porción desde el panel de control.")
+            else:
+                st.info("✨ El plato cuenta con alimento suficiente.")
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 try:
     os.mkdir("temp")
