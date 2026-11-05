@@ -178,7 +178,7 @@ with st.sidebar:
     pestana = st.radio("🎛️ Opciones", ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo Hogareño"])
 
 # =========================================================================
-# MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ
+# MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ (CÓDIGO BASE ESTABLE)
 # =========================================================================
 if pestana == "🏠 Panel de Control e IoT":
     
@@ -211,7 +211,7 @@ if pestana == "🏠 Panel de Control e IoT":
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Módulo de Asistente de Voz corregido y optimizado para abrir permisos de micrófono de forma nativa
+    # Módulo de Asistente de Voz con el código base funcional y limpio
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("🎙️ Asistente por Voz Inteligente")
     st.markdown("Habla con tu app para activar el dispensador. Di claramente uno de los siguientes comandos:")
@@ -226,7 +226,6 @@ if pestana == "🏠 Panel de Control e IoT":
         </div>
     """, unsafe_allow_html=True)
 
-    # Componente de voz mejorado utilizando permisos directos de la API del navegador
     voz_html = """
     <div style="text-align: center; padding: 10px;">
         <button id="voice-btn" style="
@@ -241,67 +240,34 @@ if pestana == "🏠 Panel de Control e IoT":
             box-shadow: 3px 3px 0px #2D2D2D;">
             🎙️ Presionar para Hablar
         </button>
-        <p id="voice-status" style="color: #2D2D2D; margin-top: 15px; font-size: 15px; font-weight: 700; min-height: 30px;"></p>
+        <p id="voice-status" style="color: #2D2D2D; margin-top: 15px; font-size: 15px; font-weight: 700;"></p>
     </div>
 
     <script>
         const vBtn = document.getElementById('voice-btn');
         const vStatus = document.getElementById('voice-status');
 
-        vBtn.onclick = async function() {
-            try {
-                // Solicitar explícitamente acceso al micrófono al navegador antes de iniciar el reconocimiento
-                await navigator.mediaDevices.getUserMedia({ audio: true });
-            } catch (err) {
-                vStatus.innerText = "⚠️ Permiso de micrófono denegado o no disponible.";
-                return;
-            }
-
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
+        vBtn.onclick = function() {
+            if (!('webkitSpeechRecognition' in window)) {
                 vStatus.innerText = "Tu navegador no soporta voz. Usa Google Chrome.";
                 return;
             }
 
-            const recognition = new SpeechRecognition();
+            const recognition = new webkitSpeechRecognition();
             recognition.continuous = false;
-            recognition.interimResults = true;
+            recognition.interimResults = false;
             recognition.lang = 'es-ES';
 
             recognition.onstart = function() {
-                vStatus.innerText = "🎧 Escuchando... Di tu comando.";
+                vStatus.innerText = "🎧 Escuchando instrucción...";
                 vBtn.style.backgroundColor = "#E76F51";
                 vBtn.innerText = "🔴 Escuchando...";
             };
 
             recognition.onresult = function(event) {
-                let interimTranscript = '';
-                let finalTranscript = '';
-
-                for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript;
-                    } else {
-                        interimTranscript += event.results[i][0].transcript;
-                    }
-                }
-
-                if (interimTranscript !== '') {
-                    vStatus.innerText = "💬 Escuchando: " + interimTranscript;
-                }
-                
-                if (finalTranscript !== '') {
-                    vStatus.innerText = "✅ Detectado: \"" + finalTranscript + "\"";
-                    
-                    // Publicar directamente por MQTT desde el contexto seguro de red o mandar el valor a Streamlit
-                    const cleanedText = finalTranscript.trim().toLowerCase();
-                    
-                    // Enviar orden mediante fetch o postMessage
-                    window.parent.postMessage({
-                        type: 'streamlit:setComponentValue',
-                        value: cleanedText
-                    }, '*');
-                }
+                const speechResult = event.results[0][0].transcript;
+                vStatus.innerText = "💬 Reconocido: " + speechResult;
+                window.parent.postMessage({type: 'streamlit:setComponentValue', value: speechResult}, '*');
             };
 
             recognition.onerror = function(event) {
@@ -313,12 +279,7 @@ if pestana == "🏠 Panel de Control e IoT":
                 resetVButton();
             };
 
-            try {
-                recognition.start();
-            } catch(e) {
-                vStatus.innerText = "⚠️ Vuelve a presionar el botón.";
-                resetVButton();
-            }
+            recognition.start();
         };
 
         function resetVButton() {
@@ -328,20 +289,16 @@ if pestana == "🏠 Panel de Control e IoT":
     </script>
     """
 
-    # Renderizar el componente de voz
-    resultado_voz = components.html(voz_html, height=150)
+    components.html(voz_html, height=130)
 
-    # Caja de texto manual con legibilidad optimizada y oscura
-    comando_voz = st.text_input("O escribe tu comando de forma manual (ej. cerrar compuerta):", key="txt_voz")
+    comando_voz = st.text_input("O ingresa tu comando de forma manual (ej. cerrar compuerta):", key="txt_voz")
     
-    # Procesamiento unificado de voz (si Streamlit recibe el input) o texto manual
     comando_a_procesar = comando_voz
     
     if comando_a_procesar:
         cmd_lower = comando_a_procesar.strip().lower()
         st.info(f"Procesando comando: **{comando_a_procesar}**")
         
-        # Verificar si el usuario indicó cerrar la compuerta
         if "cerrar" in cmd_lower:
             res = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar"})
             if res is True:
@@ -349,7 +306,6 @@ if pestana == "🏠 Panel de Control e IoT":
             else:
                 st.error(f"Error de conexión MQTT: {res}")
         else:
-            # Si es porción pequeña, mediana o grande
             res = enviar_mqtt({"dispositivo": "voz", "Act1": cmd_lower})
             if res is True:
                 st.success("📡 ¡Instrucción transmitida al dispositivo con éxito!")
@@ -359,7 +315,7 @@ if pestana == "🏠 Panel de Control e IoT":
     st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================================================================
-# MÓDULO 2: CÁMARA Y MONITOREO HOGAREÑO CON foto2.png
+# MÓDULO 2: CÁMARA Y MONITOREO HOGAREÑO CON foto2.png (CLASE 1)
 # =========================================================================
 elif pestana == "👁️ Cámara y Monitoreo Hogareño":
     
@@ -400,7 +356,7 @@ elif pestana == "👁️ Cámara y Monitoreo Hogareño":
             st.divider()
             st.markdown("### 🔍 Análisis del Comedero:")
 
-            # Lógica basada estrictamente en la Clase 1
+            # Lógica exacta solicitada para la cámara: Si se cumple la clase 1, dice que aún hay comida, sino que ya se acabó.
             if indice_clase == 1 or "clase 1" in clase_detectada.lower() or "lleno" in clase_detectada.lower() or "comida" in clase_detectada.lower():
                 st.success("🟢 Aún hay comida en comedero")
             else:
