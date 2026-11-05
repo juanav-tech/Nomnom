@@ -22,20 +22,20 @@ st.set_page_config(
     layout="centered"
 )
 
-# Estilos CSS con diseño lúdico, amigable y contraste perfecto sobre fondos claros
+# Estilos CSS con diseño lúdico, amigable, sin sombra en el título y contraste optimizado
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap');
 
     .stApp {
-        background-color: #FAF5EE; /* Fondo cálido tipo papel artesanal */
+        background-color: #FAF5EE;
         color: #2D2D2D;
         font-family: 'Montserrat', sans-serif;
     }
     
     .main-header {
         background: linear-gradient(135deg, #FFF1E6 0%, #FDE2E4 100%);
-        padding: 30px;
+        padding: 25px;
         border-radius: 20px;
         border: 3px dashed #E07A5F;
         margin-bottom: 25px;
@@ -50,7 +50,7 @@ st.markdown("""
         letter-spacing: 2px;
         color: #DDA15E;
         font-size: 38px;
-        text-shadow: 2px 2px 0px #2D2D2D;
+        text-shadow: none; /* Sin sombra detrás del NOMNOM */
     }
 
     .main-header p {
@@ -101,15 +101,12 @@ st.markdown("""
         transform: translateY(-2px);
     }
 
-    .illustration-box {
-        background-color: #FFF3EB;
-        border: 2px dashed #F4A261;
-        border-radius: 15px;
-        padding: 15px;
-        text-align: center;
-        color: #DDA15E;
-        font-weight: 700;
-        font-style: italic;
+    /* Contenedor transparente para PNGs sin fondo blanco forzado */
+    .transparent-img-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-bottom: 15px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -143,20 +140,15 @@ def cargar_modelo_teachable():
     except Exception as e:
         return None, None
 
-# --- LAYOUT SUPERIOR: ILUSTRACIONES Y TÍTULO ---
-col_ilu1, col_img_main, col_ilu2 = st.columns([1, 2, 1])
-
-with col_ilu1:
-    st.markdown('<div class="illustration-box">🐾<br>[ Ilustración galletas / snacks ]</div>', unsafe_allow_html=True)
+# --- LAYOUT SUPERIOR: SOLO IMAGEN PRINCIPAL (coca.png) CENTRADA Y SIN FONDO BLANCO ---
+col_img1, col_img_main, col_img3 = st.columns([1, 2, 1])
 
 with col_img_main:
     try:
-        st.image("coca.png", use_column_width=True)
+        imagen_coca = Image.open("coca.png")
+        st.image(imagen_coca, use_column_width=True)
     except Exception:
         st.markdown("<div style='text-align: center; color: #E76F51; font-weight: bold;'>[ Imagen coca.png no encontrada ]</div>", unsafe_allow_html=True)
-
-with col_ilu2:
-    st.markdown('<div class="illustration-box">🏠<br>[ Ilustración casita / mascota ]</div>', unsafe_allow_html=True)
 
 st.markdown("""
     <div class="main-header">
@@ -165,8 +157,14 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Menú de navegación lateral
-pestana = st.sidebar.radio("🎛️ Menú Principal", ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo Hogareño"])
+# Menú de navegación lateral (con foto1.png integrada en el panel lateral)
+with st.sidebar:
+    try:
+        st.image("foto1.png", use_column_width=True)
+    except Exception:
+        st.write("🐾 Menú de Control")
+        
+    pestana = st.radio("🎛️ Opciones", ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo Hogareño"])
 
 # =========================================================================
 # MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ
@@ -299,18 +297,22 @@ elif pestana == "👁️ Cámara y Monitoreo Hogareño":
     st.subheader("📹 Monitoreo en Directo desde Casa")
     st.markdown("Aquí puedes observar la comida de tu mascota en tiempo real a través de la cámara del hogar.")
 
+    # Mostramos la segunda ilustración adicional (foto2.png) justo en esta sección de monitoreo
+    try:
+        st.image("foto2.png", use_column_width=True)
+    except Exception:
+        pass
+
     modelo, clases = cargar_modelo_teachable()
 
     if modelo is None:
         st.error("⚠️ No se pudieron cargar los archivos `keras_model.h5` o `labels.txt` en el repositorio.")
     else:
-        # Usamos la cámara simulando la vista remota de la casa
         captura_camara = st.camera_input("Vista del plato en casa")
 
         if captura_camara is not None:
             image = Image.open(captura_camara).convert("RGB")
             
-            # Preprocesamiento estándar para el modelo (224x224)
             size = (224, 224)
             image_resized = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
             image_array = np.asarray(image_resized)
@@ -319,7 +321,6 @@ elif pestana == "👁️ Cámara y Monitoreo Hogareño":
             data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
             data[0] = normalized_image_array
 
-            # Predicción con Keras
             prediccion = modelo.predict(data)
             indice_clase = np.argmax(prediccion[0])
             clase_detectada = clases[indice_clase]
@@ -328,12 +329,10 @@ elif pestana == "👁️ Cámara y Monitoreo Hogareño":
             st.divider()
             st.markdown("### 🔍 Análisis del Comedero:")
 
-            # Lógica basada en si detecta la función 1 o clase principal del modelo
-            # (Asumiendo índice 0 o 1 según tu entrenamiento en Teachable Machine)
             if indice_clase == 0 or "comida" in clase_detectada.lower() or "lleno" in clase_detectada.lower():
-                st.success("🟢 ¡Hay comida en el plato de tu mascota!")
+                st.success("🟢 Hay comida")
             else:
-                st.warning("🔴 No hay comida en el plato (El plato está vacío).")
+                st.warning("🔴 No hay comida")
                 
             st.caption(f"Detalle técnico de IA: {clase_detectada} ({confianza:.1f}% de certeza)")
 
