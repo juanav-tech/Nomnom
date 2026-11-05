@@ -131,14 +131,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Configuración MQTT original con tu tópico 'voicesebas'
+# Configuración MQTT corregida con tu tópico 'voicejuana'
 broker = "broker.mqttdashboard.com"
 port = 1883
-mqtt_topic = "voicesebas"
+mqtt_topic = "voicejuana"
 
 def enviar_mqtt(payload_dict):
     try:
-        client1 = paho.Client("ClienteSebas")
+        client1 = paho.Client("ClienteJuana")
         client1.connect(broker, port, keepalive=60)
         client1.loop_start()
         mensaje = json.dumps(payload_dict)
@@ -182,33 +182,3 @@ st.markdown("""
 
 # --- BARRA LATERAL CON LA ILUSTRACIÓN foto1.png Y CAMPO PARA LA API KEY ---
 with st.sidebar:
-    try:
-        imagen_foto1 = Image.open("foto1.png")
-        st.image(imagen_foto1, use_column_width=True)
-    except Exception:
-        st.write("🐾 Menú de Control")
-
-    st.markdown("### 🔑 Configuración de IA")
-    api_key_input = st.text_input(
-        "OpenAI API Key:", 
-        type="password", 
-        placeholder="sk-...", 
-        key="main_api_key_input"
-    )
-    if api_key_input:
-        os.environ['OPENAI_API_KEY'] = api_key_input
-
-    pestana = st.radio("🎛️ Opciones", ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo Hogareño"])
-
-# =========================================================================
-# MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ
-# =========================================================================
-if pestana == "🏠 Panel de Control e IoT":
-    
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("🍽️ Panel de Alimentación Rápida")
-    st.markdown("Selecciona el tamaño de la porción que deseas dispensar y envía la orden al instante.")
-
-    tipo_porcion = st.selectbox(
-        "📏 Tamaño de la ración:",
-        ["Porción Pequeña (5
