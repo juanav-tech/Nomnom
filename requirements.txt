@@ -5,3 +5,4 @@ pillow>=7.1.0
 requests>=2.25.0
 tensorflow==2.15.1
 keras==2.15.0
+openai>=1.0.0
