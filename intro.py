@@ -175,7 +175,7 @@ with st.sidebar:
     except Exception:
         st.write("🐾 Menú de Control")
         
-    pestana = st.radio("🎛️ Opciones", ["🏠 Panel de Control", "👁️ Cámara y Monitoreo Hogareño"])
+    pestana = st.radio("🎛️ Opciones", ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo Hogareño"])
 
 # =========================================================================
 # MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ
