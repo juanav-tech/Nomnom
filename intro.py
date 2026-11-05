@@ -1,6 +1,5 @@
 import os
 import streamlit as st
-import streamlit.components.v1 as components
 from PIL import Image, ImageOps
 import numpy as np
 import time
@@ -29,7 +28,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Estilos CSS con diseño lúdico y contraste absoluto para legibilidad
+# Estilos CSS con diseño lúdico, amigable y contraste absoluto para legibilidad
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap');
@@ -121,13 +120,21 @@ st.markdown("""
         color: #2D2D2D !important;
         transform: translateY(-2px);
     }
+
+    /* Grabador de audio nativo */
+    [data-testid="stAudioInput"] {
+        background-color: #FFFFFF !important;
+        border-radius: 18px !important;
+        border: 2px solid #F4A261 !important;
+        padding: 12px !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# Configuración del broker MQTT
+# Configuración del broker MQTT (compatible con paho < 2.0.0)
 broker = "broker.mqttdashboard.com"
 port = 1883
-topic_comunicacion = "voicejuana"
+topic_comunicacion = "voicesebas"
 
 def enviar_mqtt(payload_dict):
     try:
@@ -198,7 +205,7 @@ with st.sidebar:
     pestana = st.radio("🎛️ Opciones", ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo Hogareño"])
 
 # =========================================================================
-# MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ (GRABADOR SEGURO HTML5 + WHISPER)
+# MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ (GRABADOR NATIVO EN EL MOMENTO)
 # =========================================================================
 if pestana == "🏠 Panel de Control e IoT":
     
@@ -231,23 +238,23 @@ if pestana == "🏠 Panel de Control e IoT":
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Asistente de voz robusto mediante componente seguro HTML5 para evitar AttributeError
+    # Asistente de voz con grabación directa en el momento (st.audio_input) + Whisper AI
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("🎙️ Asistente por Voz Inteligente")
-    st.markdown("Usa el grabador o escribe tu comando de voz abajo:")
+    st.markdown("Presiona el botón del grabador para hablar en el momento y dar tu instrucción:")
 
-    audio_bytes_input = st.file_uploader("Sube tu archivo de audio grabado o usa el asistente:", type=["wav", "mp3", "m4a"], key="audio_uploader_file")
+    audio_file = st.audio_input("Grabar instrucción de voz", key="mic_recorder")
 
     captured_text = None
 
-    if audio_bytes_input is not None:
+    if audio_file:
         if api_key and HAS_OPENAI:
             with st.spinner("Procesando audio con Whisper AI..."):
                 try:
                     client_ai = OpenAI(api_key=api_key)
                     transcript = client_ai.audio.transcriptions.create(
                         model="whisper-1",
-                        file=audio_bytes_input,
+                        file=audio_file,
                         language="es"
                     )
                     captured_text = transcript.text.strip()
@@ -262,7 +269,7 @@ if pestana == "🏠 Panel de Control e IoT":
     if comando_voz:
         captured_text = comando_voz
 
-    # Procesamiento del comando detectado
+    # Procesamiento del comando detectado (por voz o texto manual)
     if captured_text:
         cmd_lower = captured_text.strip().lower()
         st.info(f"Procesando comando: **{captured_text}**")
@@ -324,7 +331,7 @@ elif pestana == "👁️ Cámara y Monitoreo Hogareño":
             st.divider()
             st.markdown("### 🔍 Análisis del Comedero:")
 
-            # Lógica estricta de la Clase 1 y texto exacto solicitado en caso negativo
+            # Lógica estricta de la Clase 1 y texto exacto solicitado si no hay comida
             if indice_clase == 1 or "clase 1" in clase_detectada.lower() or "lleno" in clase_detectada.lower() or "comida" in clase_detectada.lower():
                 st.success("🟢 Aún hay comida en comedero")
             else:
