@@ -1,19 +1,10 @@
 import os
 import streamlit as st
 import streamlit.components.v1 as components
-from PIL import Image, ImageOps
-import numpy as np
+from PIL import Image
 import time
 import json
 import paho.mqtt.client as paho
-
-# Intentamos importar tensorflow de manera segura
-try:
-    import tensorflow as tf
-    from keras.models import load_model
-    TF_DISPONIBLE = True
-except Exception:
-    TF_DISPONIBLE = False
 
 # Configuración de página con la identidad NomNom
 st.set_page_config(
@@ -94,32 +85,39 @@ st.markdown("""
 # Configuración del broker MQTT
 broker = "broker.mqttdashboard.com"
 port = 1883
-topic = "voicejuana"
+topic_comunicacion = "voicejuana"
 
 def enviar_mqtt(payload_dict):
     try:
         client = paho.Client("NomNomStreamlitApp")
         client.connect(broker, port)
         mensaje = json.dumps(payload_dict)
-        client.publish(topic, mensaje)
+        client.publish(topic_comunicacion, mensaje)
         client.disconnect()
         return True
     except Exception as e:
         return str(e)
 
-# Función para cargar el modelo de Teachable Machine en caché
+# --- CONFIGURACIÓN DE RECEPCIÓN MQTT EN TIEMPO REAL DESDE WOKWI ---
+if "respuesta_wokwi" not in st.session_state:
+    st.session_state.respuesta_wokwi = "Esperando señal del simulador..."
+
+def al_recibir_mensaje(client, userdata, message):
+    st.session_state.respuesta_wokwi = message.payload.decode("utf-8")
+
 @st.cache_resource
-def cargar_modelo_ia():
-    if not TF_DISPONIBLE:
-        return None, None
+def iniciar_receptor():
     try:
-        # Deshabilitar advertencias de compilación
-        model = load_model('keras_model.h5', compile=False)
-        with open('labels.txt', 'r', encoding='utf-8') as f:
-            class_names = [line.strip() for line in f.readlines()]
-        return model, class_names
-    except Exception as e:
-        return None, None
+        client_sub = paho.Client("StreamlitListenerNomNom")
+        client_sub.on_message = al_recibir_mensaje
+        client_sub.connect(broker, port)
+        client_sub.subscribe(topic_comunicacion)
+        client_sub.loop_start()
+        return client_sub
+    except:
+        return None
+
+iniciar_receptor()
 
 # --- ENCABEZADO Y ESPACIO PARA ILUSTRACIÓN ---
 col_img1, col_img2, col_img3 = st.columns([1, 2, 1])
@@ -136,14 +134,20 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Menú de navegación lateral o pestañas para separar funciones
-pestana = st.sidebar.radio("🎛️ Navegación", ["🏠 Panel de Control e IoT", "👁️ IA: Estado del Plato (Teachable Machine)"])
+# Menú de navegación
+pestana = st.sidebar.radio("🎛️ Navegación", ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo"])
 
 # =========================================================================
 # MÓDULO 1: CONTROL MANUAL Y VOZ (MQTT & WOKWI)
 # =========================================================================
 if pestana == "🏠 Panel de Control e IoT":
     
+    # Tarjeta de Estado en Tiempo Real desde Wokwi
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.subheader("📡 Estado en Tiempo Real desde Wokwi")
+    st.info(f"**Respuesta del ESP32:** {st.session_state.respuesta_wokwi}")
+    st.markdown('</div>', unsafe_allow_html=True)
+
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("🍽️ Panel de Alimentación Rápida")
     st.write("Selecciona la porción exacta para tu mascota y envíala al dispositivo IoT[cite: 7, 10].")
@@ -235,7 +239,7 @@ if pestana == "🏠 Panel de Control e IoT":
         };
 
         function resetVButton() {
-            vBtn.style.backgroundColor = "#2A9D8F";
+            vBtn.style.backgroundColor = #2A9D8F;
             vBtn.innerText = "🎙️ Presionar para Hablar";
         }
     </script>
@@ -253,50 +257,19 @@ if pestana == "🏠 Panel de Control e IoT":
     st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================================================================
-# MÓDULO 2: VISIÓN ARTIFICIAL (TEACHABLE MACHINE / KERAS)
+# MÓDULO 2: CÁMARA Y MONITOREO DEL PLATO
 # =========================================================================
-elif pestana == "👁️ IA: Estado del Plato (Teachable Machine)":
+elif pestana == "👁️ Cámara y Monitoreo":
     
     st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("🤖 Detector de Comida en el Plato")
-    st.write("Usa la cámara de tu dispositivo para analizar si el plato de tu mascota tiene comida o está vacío.")
+    st.subheader("📸 Monitoreo del Plato de la Mascota")
+    st.write("Toma una fotografía actual para verificar visualmente si tu mascota ya comió[cite: 7, 10].")
 
-    modelo, clases = cargar_modelo_ia()
+    foto_plato = st.camera_input("Toma una foto del comedero")
 
-    if modelo is None:
-        st.error("⚠️ No se encontró el archivo `keras_model.h5` o `labels.txt` en el repositorio. Súbelo a GitHub para activar la IA.")
-    else:
-        # Captura de imagen nativa con la cámara del dispositivo
-        foto_plato = st.camera_input("📸 Toma una foto del plato de comida")
-
-        if foto_plato is not None:
-            image = Image.open(foto_plato).convert("RGB")
-            
-            # Preprocesamiento estándar para Teachable Machine (224x224 y normalización)
-            size = (224, 224)
-            image_resized = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
-            image_array = np.asarray(image_resized)
-            
-            # Normalizar la imagen (escala -1 a 1 o 0 a 1 dependiendo del modelo)
-            normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1
-            data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
-            data[0] = normalized_image_array
-
-            # Realizar predicción
-            prediccion = modelo.predict(data)
-            indice_clase = np.argmax(prediccion[0])
-            clase_detectada = clases[indice_clase]
-            confianza = float(prediccion[0][indice_clase]) * 100
-
-            st.divider()
-            st.write(f"### 🔍 Resultado del análisis:")
-            st.success(f"Estado detectado: **{clase_detectada}** (Confianza: {confianza:.2f}%)")
-
-            # Acción automática opcional basada en IA
-            if "vacio" in clase_detectada.lower() or "empty" in clase_detectada.lower():
-                st.warning("⚠️ El plato está vacío. Puedes activar una porción desde el panel de control.")
-            else:
-                st.info("✨ El plato cuenta con alimento suficiente.")
+    if foto_plato is not None:
+        st.success("✨ Imagen capturada correctamente y lista para supervisión.")
+        st.info("💡 Consejo: Puedes usar esta vista para comprobar el estado físico del plato en casa estés donde estés[cite: 7, 10].")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
