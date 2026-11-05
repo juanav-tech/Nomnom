@@ -131,7 +131,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Configuración MQTT original (tópico voicesebas)
+# Configuración MQTT original con tu tópico 'voicesebas'
 broker = "broker.mqttdashboard.com"
 port = 1883
 mqtt_topic = "voicesebas"
@@ -180,13 +180,23 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- BARRA LATERAL CON LA ILUSTRACIÓN foto1.png ---
+# --- BARRA LATERAL CON LA ILUSTRACIÓN foto1.png Y CAMPO PARA LA API KEY ---
 with st.sidebar:
     try:
         imagen_foto1 = Image.open("foto1.png")
         st.image(imagen_foto1, use_column_width=True)
     except Exception:
         st.write("🐾 Menú de Control")
+
+    st.markdown("### 🔑 Configuración de IA")
+    api_key_input = st.text_input(
+        "OpenAI API Key:", 
+        type="password", 
+        placeholder="sk-...", 
+        key="main_api_key_input"
+    )
+    if api_key_input:
+        os.environ['OPENAI_API_KEY'] = api_key_input
 
     pestana = st.radio("🎛️ Opciones", ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo Hogareño"])
 
@@ -201,124 +211,4 @@ if pestana == "🏠 Panel de Control e IoT":
 
     tipo_porcion = st.selectbox(
         "📏 Tamaño de la ración:",
-        ["Porción Pequeña (50g)", "Porción Mediana (100g)", "Porción Grande (200g)"]
-    )
-
-    col_btn1, col_btn2 = st.columns(2)
-    with col_btn1:
-        if st.button("🚀 Servir Comida"):
-            tamano = "pequena" if "Pequeña" in tipo_porcion else ("grande" if "Grande" in tipo_porcion else "mediana")
-            resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": tamano})
-            if resultado is True:
-                st.success(f"¡Ración {tipo_porcion} enviada al comedero correctamente!")
-            else:
-                st.error(f"Error de conexión MQTT: {resultado}")
-
-    with col_btn2:
-        if st.button("🔒 Cerrar Compuerta"):
-            resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar"})
-            if resultado is True:
-                st.warning("Comando de cierre enviado con éxito (Indicador rojo en Wokwi).")
-            else:
-                st.error(f"Error de conexión MQTT: {resultado}")
-
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # Asistente de voz original con restricciones de los 4 comandos
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("🎙️ Asistente por Voz Inteligente")
-    st.markdown("Graba tu voz diciendo **exactamente uno de los siguientes comandos permitidos**:")
-    
-    st.markdown("""
-        <div style="background-color: #FFF9F5; padding: 14px; border-radius: 10px; border-left: 5px solid #E76F51; margin-bottom: 15px;">
-            <b>📌 Comandos permitidos para abrir o cerrar:</b><br>
-            • <i>"Porción pequeña"</i><br>
-            • <i>"Porción mediana"</i><br>
-            • <i>"Porción grande"</i><br>
-            • <i>"Cerrar compuerta"</i>
-        </div>
-    """, unsafe_allow_html=True)
-
-    audio_file = st.audio_input("Grabar instrucción de voz", key="mic_recorder")
-
-    captured_text = None
-
-    if audio_file:
-        if HAS_OPENAI:
-            with st.spinner("Procesando audio con Whisper AI..."):
-                try:
-                    client_ai = OpenAI()
-                    transcript = client_ai.audio.transcriptions.create(
-                        model="whisper-1",
-                        file=audio_file,
-                        language="es"
-                    )
-                    captured_text = transcript.text.strip()
-                    st.info(f"🗣️ *Lo que la IA escuchó:* \"{captured_text}\"")
-                except Exception as e:
-                    st.error(f"Error procesando el audio: {e}")
-        else:
-            st.warning("⚠️ Asegúrate de tener configurada tu variable de entorno `OPENAI_API_KEY`.")
-
-    # Opción manual complementaria
-    comando_voz = st.text_input("O ingresa tu comando de forma manual:", key="txt_voz", placeholder="Ej: porción pequeña, cerrar compuerta...")
-    if comando_voz:
-        captured_text = comando_voz
-
-    # Filtrado y validación estricta de los 4 comandos permitidos
-    if captured_text:
-        cmd_lower = captured_text.strip().lower()
-        st.info(f"Procesando comando: **{captured_text}**")
-        
-        es_porcion_pequena = "pequeña" in cmd_lower or "pequena" in cmd_lower
-        es_porcion_mediana = "mediana" in cmd_lower
-        es_porcion_grande = "grande" in cmd_lower
-        es_cerrar = "cerrar" in cmd_lower
-
-        if es_cerrar:
-            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar"})
-            if res is True:
-                st.warning("🔒 ¡Compuerta cerrada! Indicador cambiado a luz roja en Wokwi.")
-            else:
-                st.error(f"Error de conexión MQTT: {res}")
-                
-        elif es_porcion_pequena or es_porcion_mediana or es_porcion_grande:
-            porcion_str = "pequena" if es_porcion_pequena else ("grande" if es_porcion_grande else "mediana")
-            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": porcion_str})
-            if res is True:
-                st.success(f"📡 ¡Comando detectado! Ración enviada al dispositivo con éxito.")
-            else:
-                st.error(f"Error al enviar por MQTT: {res}")
-        else:
-            st.error("⚠️ Comando no reconocido. Solo se permite: 'Porción pequeña', 'Porción mediana', 'Porción grande' o 'Cerrar compuerta'.")
-
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# =========================================================================
-# MÓDULO 2: CÁMARA Y MONITOREO HOGAREÑO CON foto2.png (CLASE 1)
-# =========================================================================
-elif pestana == "👁️ Cámara y Monitoreo Hogareño":
-    
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("📹 Monitoreo en Directo desde Casa")
-    
-    try:
-        imagen_foto2 = Image.open("foto2.png")
-        st.image(imagen_foto2, use_column_width=True)
-    except Exception:
-        pass
-
-    st.markdown("Aquí puedes observar la comida de tu mascota en tiempo real a través de la cámara del hogar.")
-
-    modelo, clases = cargar_modelo_teachable()
-
-    if modelo is None:
-        st.error("⚠️ No se pudieron cargar los archivos `keras_model.h5` o `labels.txt` en el repositorio.")
-    else:
-        captura_camara = st.camera_input("Vista del plato en casa")
-
-        if captura_camara is not None:
-            image = Image.open(captura_camara).convert("RGB")
-            
-            size = (224, 224)
-            image_resized = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
+        ["Porción Pequeña (5
