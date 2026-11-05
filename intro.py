@@ -218,7 +218,6 @@ if pestana == "🏠 Panel de Control e IoT":
     with col_btn1:
         if st.button("🚀 Servir Comida"):
             tamano = "pequena" if "Pequeña" in tipo_porcion else ("grande" if "Grande" in tipo_porcion else "mediana")
-            # Envía la acción de servir junto con el bombillo en VERDE
             resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": tamano, "status": "GREEN"})
             if resultado is True:
                 st.success(f"¡Ración {tipo_porcion} enviada al comedero correctamente! (Bombillo Verde)")
@@ -227,7 +226,6 @@ if pestana == "🏠 Panel de Control e IoT":
 
     with col_btn2:
         if st.button("🔒 Cerrar Compuerta"):
-            # Envía la acción de cerrar junto con el bombillo en ROJO
             resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar", "status": "RED"})
             if resultado is True:
                 st.warning("Comando de cierre enviado con éxito (Bombillo Rojo en Wokwi).")
@@ -278,64 +276,4 @@ if pestana == "🏠 Panel de Control e IoT":
         captured_text = comando_voz
 
     # Filtrado y validación estricta de los 4 comandos permitidos con cambio de color en el bombillo
-    if captured_text:
-        cmd_lower = captured_text.strip().lower()
-        st.info(f"Procesando comando: **{captured_text}**")
-        
-        es_porcion_pequena = "pequeña" in cmd_lower or "pequena" in cmd_lower
-        es_porcion_mediana = "mediana" in cmd_lower
-        es_porcion_grande = "grande" in cmd_lower
-        es_cerrar = "cerrar" in cmd_lower
-
-        if es_cerrar:
-            # Envía orden de cerrar y pone el bombillo en ROJO
-            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar", "status": "RED"})
-            if res is True:
-                st.warning("🔒 ¡Compuerta cerrada! Bombillo cambiado a luz roja en Wokwi.")
-            else:
-                st.error(f"Error de conexión MQTT: {res}")
-                
-        elif es_porcion_pequena or es_porcion_mediana or es_porcion_grande:
-            porcion_str = "pequena" if es_porcion_pequena else ("grande" if es_porcion_grande else "mediana")
-            # Envía orden de servir y pone el bombillo en VERDE
-            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": porcion_str, "status": "GREEN"})
-            if res is True:
-                st.success(f"📡 ¡Comando detectado! Ración enviada y bombillo verde encendido en Wokwi.")
-            else:
-                st.error(f"Error al enviar por MQTT: {res}")
-        else:
-            st.error("⚠️ Comando no reconocido. Solo se permite: 'Porción pequeña', 'Porción mediana', 'Porción grande' o 'Cerrar compuerta'.")
-
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# =========================================================================
-# MÓDULO 2: CÁMARA Y MONITOREO HOGAREÑO CON foto2.png (CLASE 1)
-# =========================================================================
-elif pestana == "👁️ Cámara y Monitoreo Hogareño":
-    
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("📹 Monitoreo en Directo desde Casa")
-    
-    try:
-        imagen_foto2 = Image.open("foto2.png")
-        st.image(imagen_foto2, use_column_width=True)
-    except Exception:
-        pass
-
-    st.markdown("Aquí puedes observar la comida de tu mascota en tiempo real a través de la cámara del hogar.")
-
-    modelo, clases = cargar_modelo_teachable()
-
-    if modelo is None:
-        st.error("⚠️ No se pudieron cargar los archivos `keras_model.h5` o `labels.txt` en el repositorio.")
-    else:
-        captura_camara = st.camera_input("Vista del plato en casa")
-
-        if captura_camara is not None:
-            image = Image.open(captura_camara).convert("RGB")
-            
-            size = (224, 224)
-            image_resized = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
-            image_array = np.asarray(image_resized)
-            
-            normalized_image_array =
+    if captured_
