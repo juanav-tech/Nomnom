@@ -1,8 +1,7 @@
-streamlit==1.28.0
-paho-mqtt==1.6.1
-numpy==1.26.3
-pillow>=7.1.0
-requests>=2.25.0
-tensorflow==2.15.1
-keras==2.15.0
-openai>=1.0.0
+streamlit>=1.40.0
+paho-mqtt<2.0.0
+numpy<2.0.0
+bokeh==2.4.3
+streamlit-bokeh-events
+Pillow
+openai
