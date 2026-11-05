@@ -131,22 +131,21 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Configuración del broker MQTT (compatible con paho < 2.0.0)
+# Configuración MQTT original (tópico voicesebas)
 broker = "broker.mqttdashboard.com"
 port = 1883
-topic_comunicacion = "voicesebas"
+mqtt_topic = "voicesebas"
 
 def enviar_mqtt(payload_dict):
     try:
-        client_id = f"NomNomApp_{int(time.time())}"
-        client = paho.Client(client_id)
-        client.connect(broker, port, keepalive=60)
-        client.loop_start()
+        client1 = paho.Client("ClienteSebas")
+        client1.connect(broker, port, keepalive=60)
+        client1.loop_start()
         mensaje = json.dumps(payload_dict)
-        info = client.publish(topic_comunicacion, mensaje)
+        info = client1.publish(mqtt_topic, mensaje)
         info.wait_for_publish(timeout=3)
-        client.loop_stop()
-        client.disconnect()
+        client1.loop_stop()
+        client1.disconnect()
         return True
     except Exception as e:
         return str(e)
@@ -181,31 +180,18 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- BARRA LATERAL CON LA ILUSTRACIÓN foto1.png Y OPENAI API KEY ---
+# --- BARRA LATERAL CON LA ILUSTRACIÓN foto1.png ---
 with st.sidebar:
     try:
         imagen_foto1 = Image.open("foto1.png")
         st.image(imagen_foto1, use_column_width=True)
     except Exception:
         st.write("🐾 Menú de Control")
-        
-    st.markdown("### 🔑 Configuración IA")
-    api_key = st.text_input(
-        "OpenAI API Key (para voz con Whisper):", 
-        type="password", 
-        placeholder="sk-...", 
-        key="main_api_key_input"
-    )
-    if api_key:
-        os.environ['OPENAI_API_KEY'] = api_key
-        st.success("API Key vinculada ✅")
-    else:
-        st.warning("⚠️ Ingrese su API Key para habilitar la transcripción por voz.")
 
     pestana = st.radio("🎛️ Opciones", ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo Hogareño"])
 
 # =========================================================================
-# MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ (RESTRICCIÓN A 4 COMANDOS)
+# MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ
 # =========================================================================
 if pestana == "🏠 Panel de Control e IoT":
     
@@ -238,7 +224,7 @@ if pestana == "🏠 Panel de Control e IoT":
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Asistente de voz con instrucciones de los 4 comandos permitidos
+    # Asistente de voz original con restricciones de los 4 comandos
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("🎙️ Asistente por Voz Inteligente")
     st.markdown("Graba tu voz diciendo **exactamente uno de los siguientes comandos permitidos**:")
@@ -258,10 +244,10 @@ if pestana == "🏠 Panel de Control e IoT":
     captured_text = None
 
     if audio_file:
-        if api_key and HAS_OPENAI:
+        if HAS_OPENAI:
             with st.spinner("Procesando audio con Whisper AI..."):
                 try:
-                    client_ai = OpenAI(api_key=api_key)
+                    client_ai = OpenAI()
                     transcript = client_ai.audio.transcriptions.create(
                         model="whisper-1",
                         file=audio_file,
@@ -272,7 +258,7 @@ if pestana == "🏠 Panel de Control e IoT":
                 except Exception as e:
                     st.error(f"Error procesando el audio: {e}")
         else:
-            st.warning("⚠️ Ingrese su OpenAI API Key en la barra lateral para procesar el audio con Whisper.")
+            st.warning("⚠️ Asegúrate de tener configurada tu variable de entorno `OPENAI_API_KEY`.")
 
     # Opción manual complementaria
     comando_voz = st.text_input("O ingresa tu comando de forma manual:", key="txt_voz", placeholder="Ej: porción pequeña, cerrar compuerta...")
@@ -284,7 +270,6 @@ if pestana == "🏠 Panel de Control e IoT":
         cmd_lower = captured_text.strip().lower()
         st.info(f"Procesando comando: **{captured_text}**")
         
-        # Validación de comandos permitidos
         es_porcion_pequena = "pequeña" in cmd_lower or "pequena" in cmd_lower
         es_porcion_mediana = "mediana" in cmd_lower
         es_porcion_grande = "grande" in cmd_lower
@@ -337,31 +322,3 @@ elif pestana == "👁️ Cámara y Monitoreo Hogareño":
             
             size = (224, 224)
             image_resized = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
-            image_array = np.asarray(image_resized)
-            
-            normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1
-            data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
-            data[0] = normalized_image_array
-
-            prediccion = modelo.predict(data)
-            indice_clase = np.argmax(prediccion[0])
-            clase_detectada = clases[indice_clase]
-            confianza = float(prediccion[0][indice_clase]) * 100
-
-            st.divider()
-            st.markdown("### 🔍 Análisis del Comedero:")
-
-            # Lógica estricta de la Clase 1 y texto exacto si no hay comida
-            if indice_clase == 1 or "clase 1" in clase_detectada.lower() or "lleno" in clase_detectada.lower() or "comida" in clase_detectada.lower():
-                st.success("🟢 Aún hay comida en comedero")
-            else:
-                st.warning("🔴 no se detectó comida en el comedero")
-                
-            st.caption(f"Detalle técnico de IA: Detectado [{clase_detectada}] con {confianza:.1f}% de certeza")
-
-    st.markdown('</div>', unsafe_allow_html=True)
-
-try:
-    os.mkdir("temp")
-except:
-    pass
