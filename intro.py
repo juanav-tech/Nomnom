@@ -22,54 +22,55 @@ st.set_page_config(
     layout="centered"
 )
 
-# Estilos CSS con contraste optimizado para alta legibilidad sobre fondos blancos
+# Estilos CSS con diseño lúdico, amigable y contraste perfecto sobre fondos claros
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap');
 
     .stApp {
-        background-color: #FDFBF7; /* Fondo cálido general */
-        color: #1E293B; /* Texto general oscuro y legible */
+        background-color: #FAF5EE; /* Fondo cálido tipo papel artesanal */
+        color: #2D2D2D;
         font-family: 'Montserrat', sans-serif;
     }
     
     .main-header {
         background: linear-gradient(135deg, #FFF1E6 0%, #FDE2E4 100%);
-        padding: 25px;
-        border-radius: 16px;
-        border: 2px dashed #E07A5F;
+        padding: 30px;
+        border-radius: 20px;
+        border: 3px dashed #E07A5F;
         margin-bottom: 25px;
-        box-shadow: 0 4px 15px rgba(224, 122, 95, 0.1);
+        box-shadow: 0 6px 20px rgba(224, 122, 95, 0.15);
         text-align: center;
     }
 
     .main-header h1 {
         font-family: 'Montserrat', sans-serif;
-        font-weight: 700;
+        font-weight: 800;
         text-transform: uppercase;
-        letter-spacing: 1px;
-        color: #C65135 !important;
+        letter-spacing: 2px;
+        color: #DDA15E;
+        font-size: 38px;
+        text-shadow: 2px 2px 0px #2D2D2D;
     }
 
     .main-header p {
-        color: #334155 !important;
-        font-weight: 600;
+        color: #4A4E69 !important;
+        font-weight: 700;
         font-size: 16px;
     }
 
     .card {
         background-color: #FFFFFF;
         padding: 25px;
-        border-radius: 16px;
-        border: 2px solid #F4A261;
+        border-radius: 20px;
+        border: 3px solid #F4A261;
         margin-bottom: 20px;
-        box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.06);
     }
 
-    /* Forzar contraste absoluto en elementos de texto dentro de tarjetas */
     .card h3 {
         color: #1E293B !important;
-        font-weight: 700;
+        font-weight: 800;
     }
     
     .card p, .card label, .stMarkdown, span {
@@ -77,27 +78,38 @@ st.markdown("""
         font-weight: 600;
     }
 
-    /* Legibilidad perfecta en alertas de Streamlit */
     .stAlert p, .stAlert span, div[data-baseweb="notification"] div {
         color: #0F172A !important;
         font-weight: 700 !important;
     }
 
-    /* Botones estilizados */
     .stButton>button {
         background-color: #E76F51;
         color: white !important;
-        border-radius: 10px;
-        font-weight: 700;
-        border: 2px solid #1E293B;
+        border-radius: 12px;
+        font-weight: 800;
+        border: 2px solid #2D2D2D;
         width: 100%;
         padding: 12px;
-        box-shadow: 2px 2px 0px #1E293B;
+        box-shadow: 3px 3px 0px #2D2D2D;
+        transition: 0.2s;
     }
 
     .stButton>button:hover {
         background-color: #F4A261;
-        color: #0F172A !important;
+        color: #2D2D2D !important;
+        transform: translateY(-2px);
+    }
+
+    .illustration-box {
+        background-color: #FFF3EB;
+        border: 2px dashed #F4A261;
+        border-radius: 15px;
+        padding: 15px;
+        text-align: center;
+        color: #DDA15E;
+        font-weight: 700;
+        font-style: italic;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -118,7 +130,7 @@ def enviar_mqtt(payload_dict):
     except Exception as e:
         return str(e)
 
-# Cargar el modelo de Teachable Machine con caché
+# Cargar el modelo Keras con caché
 @st.cache_resource
 def cargar_modelo_teachable():
     if not TF_DISPONIBLE:
@@ -131,32 +143,39 @@ def cargar_modelo_teachable():
     except Exception as e:
         return None, None
 
-# --- IMAGEN PRINCIPAL (coca.png) Y ENCABEZADO ---
-col_img1, col_img2, col_img3 = st.columns([1, 2, 1])
-with col_img2:
+# --- LAYOUT SUPERIOR: ILUSTRACIONES Y TÍTULO ---
+col_ilu1, col_img_main, col_ilu2 = st.columns([1, 2, 1])
+
+with col_ilu1:
+    st.markdown('<div class="illustration-box">🐾<br>[ Ilustración galletas / snacks ]</div>', unsafe_allow_html=True)
+
+with col_img_main:
     try:
         st.image("coca.png", use_column_width=True)
     except Exception:
-        st.markdown("<div style='text-align: center; color: #E76F51; font-style: italic; font-weight: bold;'>[ Imagen coca.png no encontrada en el repositorio ]</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align: center; color: #E76F51; font-weight: bold;'>[ Imagen coca.png no encontrada ]</div>", unsafe_allow_html=True)
+
+with col_ilu2:
+    st.markdown('<div class="illustration-box">🏠<br>[ Ilustración casita / mascota ]</div>', unsafe_allow_html=True)
 
 st.markdown("""
     <div class="main-header">
         <h1>🐾 NOMNOM</h1>
-        <p>Dispensador Inteligente de Alimentos para Mascotas</p>
+        <p>Tu dispensador inteligente y amigable para consentir a tu peludo</p>
     </div>
 """, unsafe_allow_html=True)
 
 # Menú de navegación lateral
-pestana = st.sidebar.radio("🎛️ Navegación", ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo del Plato"])
+pestana = st.sidebar.radio("🎛️ Menú Principal", ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo Hogareño"])
 
 # =========================================================================
-# MÓDULO 1: CONTROL MANUAL Y VOZ (MQTT & WOKWI)
+# MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ
 # =========================================================================
 if pestana == "🏠 Panel de Control e IoT":
     
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("🍽️ Panel de Alimentación Rápida")
-    st.markdown("Selecciona la porción exacta para tu mascota y envíala al dispositivo IoT[cite: 7, 10].")
+    st.markdown("Selecciona el tamaño de la porción que deseas dispensar y envía la orden al instante.")
 
     tipo_porcion = st.selectbox(
         "📏 Tamaño de la ración:",
@@ -183,26 +202,35 @@ if pestana == "🏠 Panel de Control e IoT":
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Módulo de Reconocimiento de Voz
+    # Módulo de Asistente de Voz con opciones claras
     st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("🎙️ Asistente por Voz")
-    st.markdown("Habla con tu app para activar el dispensador de forma remota:")
+    st.subheader("🎙️ Asistente por Voz Inteligente")
+    st.markdown("Habla con tu app para activar el dispensador. Debes decir exactamente uno de los siguientes comandos:")
+    
+    st.markdown("""
+        <div style="background-color: #FFF9F5; padding: 12px; border-radius: 10px; border-left: 5px solid #E76F51; margin-bottom: 15px;">
+            <b>📌 Comandos permitidos:</b><br>
+            • <i>"Porción pequeña"</i><br>
+            • <i>"Porción mediana"</i><br>
+            • <i>"Porción grande"</i>
+        </div>
+    """, unsafe_allow_html=True)
 
     voz_html = """
     <div style="text-align: center; padding: 10px;">
         <button id="voice-btn" style="
             background-color: #2A9D8F; 
             color: white; 
-            border: 2px solid #1E293B; 
+            border: 2px solid #2D2D2D; 
             padding: 12px 24px; 
-            border-radius: 10px; 
-            font-weight: 700; 
+            border-radius: 12px; 
+            font-weight: 800; 
             font-size: 16px; 
             cursor: pointer;
-            box-shadow: 2px 2px 0px #1E293B;">
+            box-shadow: 3px 3px 0px #2D2D2D;">
             🎙️ Presionar para Hablar
         </button>
-        <p id="voice-status" style="color: #1E293B; margin-top: 10px; font-size: 14px; font-weight: 700;"></p>
+        <p id="voice-status" style="color: #2D2D2D; margin-top: 15px; font-size: 15px; font-weight: 700;"></p>
     </div>
 
     <script>
@@ -221,19 +249,19 @@ if pestana == "🏠 Panel de Control e IoT":
             recognition.lang = 'es-ES';
 
             recognition.onstart = function() {
-                vStatus.innerText = "Escuchando instrucción...";
+                vStatus.innerText = "🎧 Escuchando tu instrucción...";
                 vBtn.style.backgroundColor = "#E76F51";
                 vBtn.innerText = "🔴 Escuchando...";
             };
 
             recognition.onresult = function(event) {
                 const speechResult = event.results[0][0].transcript;
-                vStatus.innerText = "Comando reconocido: " + speechResult;
+                vStatus.innerText = "💬 Transcripción: \\"" + speechResult + "\\"";
                 window.parent.postMessage({type: 'streamlit:setComponentValue', value: speechResult}, '*');
             };
 
             recognition.onerror = function(event) {
-                vStatus.innerText = "Error: " + event.error;
+                vStatus.innerText = "⚠️ Error de reconocimiento: " + event.error;
                 resetVButton();
             };
 
@@ -251,37 +279,38 @@ if pestana == "🏠 Panel de Control e IoT":
     </script>
     """
 
-    components.html(voz_html, height=130)
+    components.html(voz_html, height=140)
 
-    comando_voz = st.text_input("O escribe tu instrucción manual:", key="txt_voz")
+    comando_voz = st.text_input("O ingresa tu comando de texto manual:", key="txt_voz")
     if comando_voz:
-        st.info(f"Procesando: **{comando_voz}**")
+        st.info(f"Procesando comando: **{comando_voz}**")
         res = enviar_mqtt({"dispositivo": "voz", "Act1": comando_voz.strip()})
         if res is True:
-            st.success("📡 ¡Instrucción transmitida a Wokwi exitosamente!")
+            st.success("📡 ¡Instrucción transmitida al dispositivo con éxito!")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================================================================
-# MÓDULO 2: CÁMARA Y RECONOCIMIENTO CON MODELO KERAS
+# MÓDULO 2: CÁMARA Y MONITOREO DEL HOGAR (KERAS)
 # =========================================================================
-elif pestana == "👁️ Cámara y Monitoreo del Plato":
+elif pestana == "👁️ Cámara y Monitoreo Hogareño":
     
     st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("📸 Monitoreo y Verificación del Plato")
-    st.markdown("Toma una foto del plato de tu mascota para verificar su estado en tiempo real[cite: 7, 10].")
+    st.subheader("📹 Monitoreo en Directo desde Casa")
+    st.markdown("Aquí puedes observar la comida de tu mascota en tiempo real a través de la cámara del hogar.")
 
     modelo, clases = cargar_modelo_teachable()
 
     if modelo is None:
-        st.error("⚠️ No se pudieron cargar los archivos `keras_model.h5` o `labels.txt`. Verifica que estén ubicados correctamente en la raíz del repositorio.")
+        st.error("⚠️ No se pudieron cargar los archivos `keras_model.h5` o `labels.txt` en el repositorio.")
     else:
-        foto_plato = st.camera_input("Toma una foto del comedero")
+        # Usamos la cámara simulando la vista remota de la casa
+        captura_camara = st.camera_input("Vista del plato en casa")
 
-        if foto_plato is not None:
-            image = Image.open(foto_plato).convert("RGB")
+        if captura_camara is not None:
+            image = Image.open(captura_camara).convert("RGB")
             
-            # Preprocesamiento de imagen para Teachable Machine (224x224)
+            # Preprocesamiento estándar para el modelo (224x224)
             size = (224, 224)
             image_resized = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
             image_array = np.asarray(image_resized)
@@ -290,20 +319,23 @@ elif pestana == "👁️ Cámara y Monitoreo del Plato":
             data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
             data[0] = normalized_image_array
 
-            # Predicción con el modelo Keras
+            # Predicción con Keras
             prediccion = modelo.predict(data)
             indice_clase = np.argmax(prediccion[0])
             clase_detectada = clases[indice_clase]
             confianza = float(prediccion[0][indice_clase]) * 100
 
             st.divider()
-            st.markdown("### 🔍 Estado del Plato:")
-            st.success(f"Resultado: **{clase_detectada}** (Confianza: {confianza:.2f}%)")
+            st.markdown("### 🔍 Análisis del Comedero:")
 
-            if "vacio" in clase_detectada.lower() or "empty" in clase_detectada.lower():
-                st.warning("⚠️ El plato se encuentra vacío. Se recomienda servir una porción.")
+            # Lógica basada en si detecta la función 1 o clase principal del modelo
+            # (Asumiendo índice 0 o 1 según tu entrenamiento en Teachable Machine)
+            if indice_clase == 0 or "comida" in clase_detectada.lower() or "lleno" in clase_detectada.lower():
+                st.success("🟢 ¡Hay comida en el plato de tu mascota!")
             else:
-                st.info("✨ El plato cuenta con alimento.")
+                st.warning("🔴 No hay comida en el plato (El plato está vacío).")
+                
+            st.caption(f"Detalle técnico de IA: {clase_detectada} ({confianza:.1f}% de certeza)")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
