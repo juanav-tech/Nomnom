@@ -22,7 +22,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Estilos CSS con diseño lúdico, amigable, sin sombra en el título y contraste optimizado
+# Estilos CSS con diseño lúdico y contraste absoluto (textos oscuros y legibles en inputs)
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap');
@@ -78,6 +78,20 @@ st.markdown("""
         font-weight: 600;
     }
 
+    /* Forzar texto oscuro y legible en los inputs de texto manuales */
+    .stTextInput input {
+        color: #1E293B !important;
+        background-color: #FFFFFF !important;
+        font-weight: 700 !important;
+        border: 2px solid #F4A261 !important;
+        border-radius: 8px;
+    }
+
+    .stTextInput label p {
+        color: #1E293B !important;
+        font-weight: 700 !important;
+    }
+
     .stAlert p, .stAlert span, div[data-baseweb="notification"] div {
         color: #0F172A !important;
         font-weight: 700 !important;
@@ -103,26 +117,20 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Configuración robusta del broker MQTT público
+# Configuración del broker MQTT
 broker = "broker.mqttdashboard.com"
 port = 1883
 topic_comunicacion = "voicejuana"
 
 def enviar_mqtt(payload_dict):
-    """Función mejorada para enviar comandos MQTT con manejo de excepciones y timeout seguro"""
     try:
-        # Usar un ID de cliente único para evitar colisiones en el broker
         client_id = f"NomNomApp_{int(time.time())}"
         client = paho.Client(client_id)
-        
-        # Conexión con keepalive para redes en la nube
         client.connect(broker, port, keepalive=60)
         client.loop_start()
-        
         mensaje = json.dumps(payload_dict)
         info = client.publish(topic_comunicacion, mensaje)
-        info.wait_for_publish(timeout=3) # Esperar a que el mensaje se entregue realmente
-        
+        info.wait_for_publish(timeout=3)
         client.loop_stop()
         client.disconnect()
         return True
@@ -170,7 +178,7 @@ with st.sidebar:
     pestana = st.radio("🎛️ Opciones", ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo Hogareño"])
 
 # =========================================================================
-# MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ
+# MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ EN TIEMPO REAL
 # =========================================================================
 if pestana == "🏠 Panel de Control e IoT":
     
@@ -203,10 +211,10 @@ if pestana == "🏠 Panel de Control e IoT":
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Módulo de Asistente de Voz con opciones claras
+    # Módulo de Asistente de Voz mejorado con transcripción en tiempo real (interim results)
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("🎙️ Asistente por Voz Inteligente")
-    st.markdown("Habla con tu app para activar el dispensador. Debes decir exactamente uno de los siguientes comandos:")
+    st.markdown("Habla con tu app para activar el dispensador. Di claramente uno de los siguientes comandos:")
     
     st.markdown("""
         <div style="background-color: #FFF9F5; padding: 12px; border-radius: 10px; border-left: 5px solid #E76F51; margin-bottom: 15px;">
@@ -231,7 +239,7 @@ if pestana == "🏠 Panel de Control e IoT":
             box-shadow: 3px 3px 0px #2D2D2D;">
             🎙️ Presionar para Hablar
         </button>
-        <p id="voice-status" style="color: #2D2D2D; margin-top: 15px; font-size: 15px; font-weight: 700;"></p>
+        <p id="voice-status" style="color: #2D2D2D; margin-top: 15px; font-size: 15px; font-weight: 700; min-height: 30px;"></p>
     </div>
 
     <script>
@@ -246,19 +254,36 @@ if pestana == "🏠 Panel de Control e IoT":
 
             const recognition = new webkitSpeechRecognition();
             recognition.continuous = false;
-            recognition.interimResults = false;
+            recognition.interimResults = true; // Habilita ver el texto mientras el usuario va hablando
             recognition.lang = 'es-ES';
 
             recognition.onstart = function() {
-                vStatus.innerText = "🎧 Escuchando tu instrucción...";
+                vStatus.innerText = "🎧 Escuchando... Di tu comando.";
                 vBtn.style.backgroundColor = "#E76F51";
                 vBtn.innerText = "🔴 Escuchando...";
             };
 
             recognition.onresult = function(event) {
-                const speechResult = event.results[0][0].transcript;
-                vStatus.innerText = "💬 Transcripción: \\"" + speechResult + "\\"";
-                window.parent.postMessage({type: 'streamlit:setComponentValue', value: speechResult}, '*');
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+
+                // Muestra el texto en tiempo real conforme se va pronunciando
+                if (interimTranscript !== '') {
+                    vStatus.innerText = "💬 Escribiendo: " + interimTranscript;
+                }
+                
+                if (finalTranscript !== '') {
+                    vStatus.innerText = "✅ Transcripción final: \"" + finalTranscript + "\"";
+                    window.parent.postMessage({type: 'streamlit:setComponentValue', value: finalTranscript}, '*');
+                }
             };
 
             recognition.onerror = function(event) {
@@ -280,9 +305,9 @@ if pestana == "🏠 Panel de Control e IoT":
     </script>
     """
 
-    components.html(voz_html, height=140)
+    components.html(voz_html, height=150)
 
-    comando_voz = st.text_input("O ingresa tu comando de texto manual:", key="txt_voz")
+    comando_voz = st.text_input("O escribe tu comando de forma manual:", key="txt_voz")
     if comando_voz:
         st.info(f"Procesando comando: **{comando_voz}**")
         res = enviar_mqtt({"dispositivo": "voz", "Act1": comando_voz.strip()})
@@ -294,14 +319,13 @@ if pestana == "🏠 Panel de Control e IoT":
     st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================================================================
-# MÓDULO 2: CÁMARA Y MONITOREO DEL HOGAR (KERAS) CON LA ILUSTRACIÓN foto2.png
+# MÓDULO 2: CÁMARA Y MONITOREO DEL HOGAR CON foto2.png
 # =========================================================================
 elif pestana == "👁️ Cámara y Monitoreo Hogareño":
     
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("📹 Monitoreo en Directo desde Casa")
     
-    # Mostramos la ilustración foto2.png en esta sección de monitoreo
     try:
         imagen_foto2 = Image.open("foto2.png")
         st.image(imagen_foto2, use_column_width=True)
@@ -349,3 +373,4 @@ try:
     os.mkdir("temp")
 except:
     pass
+    
