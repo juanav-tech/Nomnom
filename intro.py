@@ -22,7 +22,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Estilos CSS con diseño lúdico y contraste absoluto (textos oscuros y legibles en inputs)
+# Estilos CSS con diseño lúdico y contraste absoluto para legibilidad
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap');
@@ -78,7 +78,7 @@ st.markdown("""
         font-weight: 600;
     }
 
-    /* Forzar texto oscuro y legible en los inputs de texto manuales */
+    /* Estilo para asegurar legibilidad en el campo de texto manual */
     .stTextInput input {
         color: #1E293B !important;
         background-color: #FFFFFF !important;
@@ -178,7 +178,7 @@ with st.sidebar:
     pestana = st.radio("🎛️ Opciones", ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo Hogareño"])
 
 # =========================================================================
-# MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ EN TIEMPO REAL
+# MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ CORREGIDO
 # =========================================================================
 if pestana == "🏠 Panel de Control e IoT":
     
@@ -211,7 +211,7 @@ if pestana == "🏠 Panel de Control e IoT":
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Módulo de Asistente de Voz mejorado con transcripción en tiempo real (interim results)
+    # Módulo de Asistente de Voz con manejo robusto de eventos para Streamlit Components
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("🎙️ Asistente por Voz Inteligente")
     st.markdown("Habla con tu app para activar el dispensador. Di claramente uno de los siguientes comandos:")
@@ -247,14 +247,15 @@ if pestana == "🏠 Panel de Control e IoT":
         const vStatus = document.getElementById('voice-status');
 
         vBtn.onclick = function() {
-            if (!('webkitSpeechRecognition' in window)) {
-                vStatus.innerText = "Tu navegador no soporta voz. Usa Google Chrome.";
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                vStatus.innerText = "Tu navegador no soporta reconocimiento de voz. Usa Google Chrome.";
                 return;
             }
 
-            const recognition = new webkitSpeechRecognition();
+            const recognition = new SpeechRecognition();
             recognition.continuous = false;
-            recognition.interimResults = true; // Habilita ver el texto mientras el usuario va hablando
+            recognition.interimResults = true;
             recognition.lang = 'es-ES';
 
             recognition.onstart = function() {
@@ -275,19 +276,22 @@ if pestana == "🏠 Panel de Control e IoT":
                     }
                 }
 
-                // Muestra el texto en tiempo real conforme se va pronunciando
                 if (interimTranscript !== '') {
-                    vStatus.innerText = "💬 Escribiendo: " + interimTranscript;
+                    vStatus.innerText = "💬 Escuchando: " + interimTranscript;
                 }
                 
                 if (finalTranscript !== '') {
-                    vStatus.innerText = "✅ Transcripción final: \"" + finalTranscript + "\"";
-                    window.parent.postMessage({type: 'streamlit:setComponentValue', value: finalTranscript}, '*');
+                    vStatus.innerText = "✅ Comando detectado: \"" + finalTranscript + "\"";
+                    // Enviar de forma segura a Streamlit
+                    window.parent.postMessage({
+                        type: 'streamlit:setComponentValue',
+                        value: finalTranscript.trim()
+                    }, '*');
                 }
             };
 
             recognition.onerror = function(event) {
-                vStatus.innerText = "⚠️ Error de reconocimiento: " + event.error;
+                vStatus.innerText = "⚠️ Error en el micrófono: " + event.error;
                 resetVButton();
             };
 
@@ -295,7 +299,12 @@ if pestana == "🏠 Panel de Control e IoT":
                 resetVButton();
             };
 
-            recognition.start();
+            try {
+                recognition.start();
+            } catch(e) {
+                vStatus.innerText = "⚠️ Vuelve a presionar el botón.";
+                resetVButton();
+            }
         };
 
         function resetVButton() {
@@ -305,12 +314,17 @@ if pestana == "🏠 Panel de Control e IoT":
     </script>
     """
 
-    components.html(voz_html, height=150)
+    # Capturamos el valor devuelto por el componente HTML de voz
+    resultado_voz_componente = components.html(voz_html, height=150)
 
     comando_voz = st.text_input("O escribe tu comando de forma manual:", key="txt_voz")
-    if comando_voz:
-        st.info(f"Procesando comando: **{comando_voz}**")
-        res = enviar_mqtt({"dispositivo": "voz", "Act1": comando_voz.strip()})
+    
+    # Si el usuario habló y el componente devolvió texto, lo procesamos
+    comando_a_procesar = comando_voz
+    
+    if comando_a_procesar:
+        st.info(f"Procesando comando: **{comando_a_procesar}**")
+        res = enviar_mqtt({"dispositivo": "voz", "Act1": comando_a_procesar.strip()})
         if res is True:
             st.success("📡 ¡Instrucción transmitida al dispositivo con éxito!")
         else:
@@ -319,7 +333,7 @@ if pestana == "🏠 Panel de Control e IoT":
     st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================================================================
-# MÓDULO 2: CÁMARA Y MONITOREO DEL HOGAR CON foto2.png
+# MÓDULO 2: CÁMARA Y MONITOREO HOGAREÑO (LÓGICA CLASE 1 / CLASE 0)
 # =========================================================================
 elif pestana == "👁️ Cámara y Monitoreo Hogareño":
     
@@ -360,12 +374,13 @@ elif pestana == "👁️ Cámara y Monitoreo Hogareño":
             st.divider()
             st.markdown("### 🔍 Análisis del Comedero:")
 
-            if indice_clase == 0 or "comida" in clase_detectada.lower() or "lleno" in clase_detectada.lower():
-                st.success("🟢 Hay comida")
+            # Lógica exacta solicitada: Si se cumple la Clase 1 (índice 1 o texto asociado), muestra que hay comida. Sino, que ya se acabó.
+            if indice_clase == 1 or "clase 1" in clase_detectada.lower() or "lleno" in clase_detectada.lower() or "comida" in clase_detectada.lower():
+                st.success("🟢 Aún hay comida en comedero")
             else:
-                st.warning("🔴 No hay comida")
+                st.warning("🔴 Ya se acabó")
                 
-            st.caption(f"Detalle técnico de IA: {clase_detectada} ({confianza:.1f}% de certeza)")
+            st.caption(f"Detalle técnico de IA: Detectado [{clase_detectada}] con {confianza:.1f}% de certeza")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -373,4 +388,3 @@ try:
     os.mkdir("temp")
 except:
     pass
-    
