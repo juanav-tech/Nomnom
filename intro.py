@@ -181,18 +181,31 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- BARRA LATERAL CON LA ILUSTRACIÓN foto1.png ---
+# --- BARRA LATERAL CON LA ILUSTRACIÓN foto1.png Y OPENAI API KEY ---
 with st.sidebar:
     try:
         imagen_foto1 = Image.open("foto1.png")
         st.image(imagen_foto1, use_column_width=True)
     except Exception:
         st.write("🐾 Menú de Control")
+        
+    st.markdown("### 🔑 Configuración IA")
+    api_key = st.text_input(
+        "OpenAI API Key (para voz con Whisper):", 
+        type="password", 
+        placeholder="sk-...", 
+        key="main_api_key_input"
+    )
+    if api_key:
+        os.environ['OPENAI_API_KEY'] = api_key
+        st.success("API Key vinculada ✅")
+    else:
+        st.warning("⚠️ Ingrese su API Key para habilitar la transcripción por voz.")
 
     pestana = st.radio("🎛️ Opciones", ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo Hogareño"])
 
 # =========================================================================
-# MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ
+# MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ (RESTRICCIÓN A 4 COMANDOS)
 # =========================================================================
 if pestana == "🏠 Panel de Control e IoT":
     
@@ -225,9 +238,130 @@ if pestana == "🏠 Panel de Control e IoT":
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Asistente de voz con la API Key proporcionada encima para copiar fácilmente
+    # Asistente de voz con instrucciones de los 4 comandos permitidos
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("🎙️ Asistente por Voz Inteligente")
+    st.markdown("Graba tu voz diciendo **exactamente uno de los siguientes comandos permitidos**:")
     
-    st.markdown("🔑 **Copia y pega la siguiente API Key de OpenAI para habilitar la voz:**")
-    st.code("sk-proj-2nOf4XrbT8C5nAqZvu1iylUw3QLDIL4Paz8dhybYN1f7qWvi1PF2fDl1n8w3
+    st.markdown("""
+        <div style="background-color: #FFF9F5; padding: 14px; border-radius: 10px; border-left: 5px solid #E76F51; margin-bottom: 15px;">
+            <b>📌 Comandos permitidos para abrir o cerrar:</b><br>
+            • <i>"Porción pequeña"</i><br>
+            • <i>"Porción mediana"</i><br>
+            • <i>"Porción grande"</i><br>
+            • <i>"Cerrar compuerta"</i>
+        </div>
+    """, unsafe_allow_html=True)
+
+    audio_file = st.audio_input("Grabar instrucción de voz", key="mic_recorder")
+
+    captured_text = None
+
+    if audio_file:
+        if api_key and HAS_OPENAI:
+            with st.spinner("Procesando audio con Whisper AI..."):
+                try:
+                    client_ai = OpenAI(api_key=api_key)
+                    transcript = client_ai.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=audio_file,
+                        language="es"
+                    )
+                    captured_text = transcript.text.strip()
+                    st.info(f"🗣️ *Lo que la IA escuchó:* \"{captured_text}\"")
+                except Exception as e:
+                    st.error(f"Error procesando el audio: {e}")
+        else:
+            st.warning("⚠️ Ingrese su OpenAI API Key en la barra lateral para procesar el audio con Whisper.")
+
+    # Opción manual complementaria
+    comando_voz = st.text_input("O ingresa tu comando de forma manual:", key="txt_voz", placeholder="Ej: porción pequeña, cerrar compuerta...")
+    if comando_voz:
+        captured_text = comando_voz
+
+    # Filtrado y validación estricta de los 4 comandos permitidos
+    if captured_text:
+        cmd_lower = captured_text.strip().lower()
+        st.info(f"Procesando comando: **{captured_text}**")
+        
+        # Validación de comandos permitidos
+        es_porcion_pequena = "pequeña" in cmd_lower or "pequena" in cmd_lower
+        es_porcion_mediana = "mediana" in cmd_lower
+        es_porcion_grande = "grande" in cmd_lower
+        es_cerrar = "cerrar" in cmd_lower
+
+        if es_cerrar:
+            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar"})
+            if res is True:
+                st.warning("🔒 ¡Compuerta cerrada! Indicador cambiado a luz roja en Wokwi.")
+            else:
+                st.error(f"Error de conexión MQTT: {res}")
+                
+        elif es_porcion_pequena or es_porcion_mediana or es_porcion_grande:
+            porcion_str = "pequena" if es_porcion_pequena else ("grande" if es_porcion_grande else "mediana")
+            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": porcion_str})
+            if res is True:
+                st.success(f"📡 ¡Comando detectado! Ración enviada al dispositivo con éxito.")
+            else:
+                st.error(f"Error al enviar por MQTT: {res}")
+        else:
+            st.error("⚠️ Comando no reconocido. Solo se permite: 'Porción pequeña', 'Porción mediana', 'Porción grande' o 'Cerrar compuerta'.")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# =========================================================================
+# MÓDULO 2: CÁMARA Y MONITOREO HOGAREÑO CON foto2.png (CLASE 1)
+# =========================================================================
+elif pestana == "👁️ Cámara y Monitoreo Hogareño":
+    
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.subheader("📹 Monitoreo en Directo desde Casa")
+    
+    try:
+        imagen_foto2 = Image.open("foto2.png")
+        st.image(imagen_foto2, use_column_width=True)
+    except Exception:
+        pass
+
+    st.markdown("Aquí puedes observar la comida de tu mascota en tiempo real a través de la cámara del hogar.")
+
+    modelo, clases = cargar_modelo_teachable()
+
+    if modelo is None:
+        st.error("⚠️ No se pudieron cargar los archivos `keras_model.h5` o `labels.txt` en el repositorio.")
+    else:
+        captura_camara = st.camera_input("Vista del plato en casa")
+
+        if captura_camara is not None:
+            image = Image.open(captura_camara).convert("RGB")
+            
+            size = (224, 224)
+            image_resized = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
+            image_array = np.asarray(image_resized)
+            
+            normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1
+            data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
+            data[0] = normalized_image_array
+
+            prediccion = modelo.predict(data)
+            indice_clase = np.argmax(prediccion[0])
+            clase_detectada = clases[indice_clase]
+            confianza = float(prediccion[0][indice_clase]) * 100
+
+            st.divider()
+            st.markdown("### 🔍 Análisis del Comedero:")
+
+            # Lógica estricta de la Clase 1 y texto exacto si no hay comida
+            if indice_clase == 1 or "clase 1" in clase_detectada.lower() or "lleno" in clase_detectada.lower() or "comida" in clase_detectada.lower():
+                st.success("🟢 Aún hay comida en comedero")
+            else:
+                st.warning("🔴 no se detectó comida en el comedero")
+                
+            st.caption(f"Detalle técnico de IA: Detectado [{clase_detectada}] con {confianza:.1f}% de certeza")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+try:
+    os.mkdir("temp")
+except:
+    pass
