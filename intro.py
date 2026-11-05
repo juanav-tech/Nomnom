@@ -100,14 +100,6 @@ st.markdown("""
         color: #2D2D2D !important;
         transform: translateY(-2px);
     }
-
-    /* Contenedor transparente para PNGs sin fondo blanco forzado */
-    .transparent-img-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-bottom: 15px;
-    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -140,7 +132,7 @@ def cargar_modelo_teachable():
     except Exception as e:
         return None, None
 
-# --- LAYOUT SUPERIOR: SOLO IMAGEN PRINCIPAL (coca.png) CENTRADA Y SIN FONDO BLANCO ---
+# --- LAYOUT SUPERIOR: IMAGEN PRINCIPAL (coca.png) ---
 col_img1, col_img_main, col_img3 = st.columns([1, 2, 1])
 
 with col_img_main:
@@ -157,12 +149,13 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Menú de navegación lateral (con foto1.png integrada en el panel lateral)
+# --- BARRA LATERAL CON LA ILUSTRACIÓN foto1.png ---
 with st.sidebar:
     try:
-        st.image("foto1.png", use_column_width=True)
+        imagen_foto1 = Image.open("foto1.png")
+        st.image(imagen_foto1, use_column_width=True)
     except Exception:
-        st.write("🐾 Menú de Control")
+        st.write("🐾 [foto1.png no encontrada]")
         
     pestana = st.radio("🎛️ Opciones", ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo Hogareño"])
 
@@ -289,19 +282,21 @@ if pestana == "🏠 Panel de Control e IoT":
     st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================================================================
-# MÓDULO 2: CÁMARA Y MONITOREO DEL HOGAR (KERAS)
+# MÓDULO 2: CÁMARA Y MONITOREO DEL HOGAR (KERAS) CON LA ILUSTRACIÓN foto2.png
 # =========================================================================
 elif pestana == "👁️ Cámara y Monitoreo Hogareño":
     
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("📹 Monitoreo en Directo desde Casa")
-    st.markdown("Aquí puedes observar la comida de tu mascota en tiempo real a través de la cámara del hogar.")
-
-    # Mostramos la segunda ilustración adicional (foto2.png) justo en esta sección de monitoreo
+    
+    # Mostramos la ilustración foto2.png en esta sección de monitoreo
     try:
-        st.image("foto2.png", use_column_width=True)
+        imagen_foto2 = Image.open("foto2.png")
+        st.image(imagen_foto2, use_column_width=True)
     except Exception:
-        pass
+        st.write("[ foto2.png no encontrada ]")
+
+    st.markdown("Aquí puedes observar la comida de tu mascota en tiempo real a través de la cámara del hogar.")
 
     modelo, clases = cargar_modelo_teachable()
 
