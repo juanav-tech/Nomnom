@@ -205,7 +205,7 @@ with st.sidebar:
     pestana = st.radio("🎛️ Opciones", ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo Hogareño"])
 
 # =========================================================================
-# MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ (GRABADOR NATIVO EN EL MOMENTO)
+# MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ (RESTRICCIÓN A 4 COMANDOS)
 # =========================================================================
 if pestana == "🏠 Panel de Control e IoT":
     
@@ -238,10 +238,20 @@ if pestana == "🏠 Panel de Control e IoT":
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Asistente de voz con grabación directa en el momento (st.audio_input) + Whisper AI
+    # Asistente de voz con instrucciones de los 4 comandos permitidos
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("🎙️ Asistente por Voz Inteligente")
-    st.markdown("Presiona el botón del grabador para hablar en el momento y dar tu instrucción:")
+    st.markdown("Graba tu voz diciendo **exactamente uno de los siguientes comandos permitidos**:")
+    
+    st.markdown("""
+        <div style="background-color: #FFF9F5; padding: 14px; border-radius: 10px; border-left: 5px solid #E76F51; margin-bottom: 15px;">
+            <b>📌 Comandos permitidos para abrir o cerrar:</b><br>
+            • <i>"Porción pequeña"</i><br>
+            • <i>"Porción mediana"</i><br>
+            • <i>"Porción grande"</i><br>
+            • <i>"Cerrar compuerta"</i>
+        </div>
+    """, unsafe_allow_html=True)
 
     audio_file = st.audio_input("Grabar instrucción de voz", key="mic_recorder")
 
@@ -269,23 +279,33 @@ if pestana == "🏠 Panel de Control e IoT":
     if comando_voz:
         captured_text = comando_voz
 
-    # Procesamiento del comando detectado (por voz o texto manual)
+    # Filtrado y validación estricta de los 4 comandos permitidos
     if captured_text:
         cmd_lower = captured_text.strip().lower()
         st.info(f"Procesando comando: **{captured_text}**")
         
-        if "cerrar" in cmd_lower:
+        # Validación de comandos permitidos
+        es_porcion_pequena = "pequeña" in cmd_lower or "pequena" in cmd_lower
+        es_porcion_mediana = "mediana" in cmd_lower
+        es_porcion_grande = "grande" in cmd_lower
+        es_cerrar = "cerrar" in cmd_lower
+
+        if es_cerrar:
             res = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar"})
             if res is True:
                 st.warning("🔒 ¡Compuerta cerrada! Indicador cambiado a luz roja en Wokwi.")
             else:
                 st.error(f"Error de conexión MQTT: {res}")
-        else:
-            res = enviar_mqtt({"dispositivo": "voz", "Act1": cmd_lower})
+                
+        elif es_porcion_pequena or es_porcion_mediana or es_porcion_grande:
+            porcion_str = "pequena" if es_porcion_pequena else ("grande" if es_porcion_grande else "mediana")
+            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": porcion_str})
             if res is True:
-                st.success("📡 ¡Instrucción transmitida al dispositivo con éxito!")
+                st.success(f"📡 ¡Comando detectado! Ración enviada al dispositivo con éxito.")
             else:
                 st.error(f"Error al enviar por MQTT: {res}")
+        else:
+            st.error("⚠️ Comando no reconocido. Solo se permite: 'Porción pequeña', 'Porción mediana', 'Porción grande' o 'Cerrar compuerta'.")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -331,7 +351,7 @@ elif pestana == "👁️ Cámara y Monitoreo Hogareño":
             st.divider()
             st.markdown("### 🔍 Análisis del Comedero:")
 
-            # Lógica estricta de la Clase 1 y texto exacto solicitado si no hay comida
+            # Lógica estricta de la Clase 1 y texto exacto si no hay comida
             if indice_clase == 1 or "clase 1" in clase_detectada.lower() or "lleno" in clase_detectada.lower() or "comida" in clase_detectada.lower():
                 st.success("🟢 Aún hay comida en comedero")
             else:
