@@ -22,14 +22,14 @@ st.set_page_config(
     layout="centered"
 )
 
-# Estilos CSS con la línea gráfica artesanal y contraste optimizado
+# Estilos CSS con contraste optimizado para alta legibilidad sobre fondos blancos
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
 
     .stApp {
-        background-color: #FDFBF7;
-        color: #2D2D2D;
+        background-color: #FDFBF7; /* Fondo cálido general */
+        color: #1E293B; /* Texto general oscuro y legible */
         font-family: 'Montserrat', sans-serif;
     }
     
@@ -44,15 +44,17 @@ st.markdown("""
     }
 
     .main-header h1 {
-        font-family: 'Arial Black', sans-serif;
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 1px;
-        color: #DDA15E;
+        color: #C65135 !important;
     }
 
     .main-header p {
-        color: #4A4E69 !important;
-        font-weight: 700;
+        color: #334155 !important;
+        font-weight: 600;
+        font-size: 16px;
     }
 
     .card {
@@ -61,32 +63,41 @@ st.markdown("""
         border-radius: 16px;
         border: 2px solid #F4A261;
         margin-bottom: 20px;
-        box-shadow: 0 6px 16px rgba(0,0,0,0.05);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.06);
     }
 
-    .card h3, .card p, .card label, .stMarkdown {
-        color: #2D2D2D !important;
+    /* Forzar contraste absoluto en elementos de texto dentro de tarjetas */
+    .card h3 {
+        color: #1E293B !important;
+        font-weight: 700;
+    }
+    
+    .card p, .card label, .stMarkdown, span {
+        color: #334155 !important;
+        font-weight: 600;
     }
 
+    /* Legibilidad perfecta en alertas de Streamlit */
     .stAlert p, .stAlert span, div[data-baseweb="notification"] div {
-        color: #1F2937 !important;
+        color: #0F172A !important;
         font-weight: 700 !important;
     }
 
+    /* Botones estilizados */
     .stButton>button {
         background-color: #E76F51;
-        color: white;
+        color: white !important;
         border-radius: 10px;
-        font-weight: bold;
-        border: 2px solid #2D2D2D;
+        font-weight: 700;
+        border: 2px solid #1E293B;
         width: 100%;
         padding: 12px;
-        box-shadow: 2px 2px 0px #2D2D2D;
+        box-shadow: 2px 2px 0px #1E293B;
     }
 
     .stButton>button:hover {
         background-color: #F4A261;
-        color: #2D2D2D;
+        color: #0F172A !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -120,27 +131,6 @@ def cargar_modelo_teachable():
     except Exception as e:
         return None, None
 
-# --- CONFIGURACIÓN DE RECEPCIÓN MQTT EN TIEMPO REAL DESDE WOKWI ---
-if "respuesta_wokwi" not in st.session_state:
-    st.session_state.respuesta_wokwi = "Esperando señal del simulador..."
-
-def al_recibir_mensaje(client, userdata, message):
-    st.session_state.respuesta_wokwi = message.payload.decode("utf-8")
-
-@st.cache_resource
-def iniciar_receptor():
-    try:
-        client_sub = paho.Client("StreamlitListenerNomNom")
-        client_sub.on_message = al_recibir_mensaje
-        client_sub.connect(broker, port)
-        client_sub.subscribe(topic_comunicacion)
-        client_sub.loop_start()
-        return client_sub
-    except:
-        return None
-
-iniciar_receptor()
-
 # --- IMAGEN PRINCIPAL (coca.png) Y ENCABEZADO ---
 col_img1, col_img2, col_img3 = st.columns([1, 2, 1])
 with col_img2:
@@ -156,7 +146,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Menú de navegación (pestaña de cámara sin mención a IA)
+# Menú de navegación lateral
 pestana = st.sidebar.radio("🎛️ Navegación", ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo del Plato"])
 
 # =========================================================================
@@ -165,13 +155,8 @@ pestana = st.sidebar.radio("🎛️ Navegación", ["🏠 Panel de Control e IoT"
 if pestana == "🏠 Panel de Control e IoT":
     
     st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("📡 Estado en Tiempo Real desde Wokwi")
-    st.info(f"**Respuesta del ESP32:** {st.session_state.respuesta_wokwi}")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("🍽️ Panel de Alimentación Rápida")
-    st.write("Selecciona la porción exacta para tu mascota y envíala al dispositivo IoT[cite: 7, 10].")
+    st.markdown("Selecciona la porción exacta para tu mascota y envíala al dispositivo IoT[cite: 7, 10].")
 
     tipo_porcion = st.selectbox(
         "📏 Tamaño de la ración:",
@@ -201,23 +186,23 @@ if pestana == "🏠 Panel de Control e IoT":
     # Módulo de Reconocimiento de Voz
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("🎙️ Asistente por Voz")
-    st.write("Habla con tu app para activar el dispensador de forma remota:")
+    st.markdown("Habla con tu app para activar el dispensador de forma remota:")
 
     voz_html = """
     <div style="text-align: center; padding: 10px;">
         <button id="voice-btn" style="
             background-color: #2A9D8F; 
             color: white; 
-            border: 2px solid #2D2D2D; 
+            border: 2px solid #1E293B; 
             padding: 12px 24px; 
             border-radius: 10px; 
-            font-weight: bold; 
+            font-weight: 700; 
             font-size: 16px; 
             cursor: pointer;
-            box-shadow: 2px 2px 0px #2D2D2D;">
+            box-shadow: 2px 2px 0px #1E293B;">
             🎙️ Presionar para Hablar
         </button>
-        <p id="voice-status" style="color: #2D2D2D; margin-top: 10px; font-size: 14px; font-weight: 600;"></p>
+        <p id="voice-status" style="color: #1E293B; margin-top: 10px; font-size: 14px; font-weight: 700;"></p>
     </div>
 
     <script>
@@ -284,7 +269,7 @@ elif pestana == "👁️ Cámara y Monitoreo del Plato":
     
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("📸 Monitoreo y Verificación del Plato")
-    st.write("Toma una foto del plato de tu mascota para verificar su estado en tiempo real[cite: 7, 10].")
+    st.markdown("Toma una foto del plato de tu mascota para verificar su estado en tiempo real[cite: 7, 10].")
 
     modelo, clases = cargar_modelo_teachable()
 
@@ -312,7 +297,7 @@ elif pestana == "👁️ Cámara y Monitoreo del Plato":
             confianza = float(prediccion[0][indice_clase]) * 100
 
             st.divider()
-            st.write("### 🔍 Estado del Plato:")
+            st.markdown("### 🔍 Estado del Plato:")
             st.success(f"Resultado: **{clase_detectada}** (Confianza: {confianza:.2f}%)")
 
             if "vacio" in clase_detectada.lower() or "empty" in clase_detectada.lower():
