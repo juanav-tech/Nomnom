@@ -50,7 +50,7 @@ st.markdown("""
         letter-spacing: 2px;
         color: #DDA15E;
         font-size: 38px;
-        text-shadow: none; /* Sin sombra detrás del NOMNOM */
+        text-shadow: none;
     }
 
     .main-header p {
@@ -103,17 +103,27 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Configuración del broker MQTT
+# Configuración robusta del broker MQTT público
 broker = "broker.mqttdashboard.com"
 port = 1883
 topic_comunicacion = "voicejuana"
 
 def enviar_mqtt(payload_dict):
+    """Función mejorada para enviar comandos MQTT con manejo de excepciones y timeout seguro"""
     try:
-        client = paho.Client("NomNomStreamlitApp")
-        client.connect(broker, port)
+        # Usar un ID de cliente único para evitar colisiones en el broker
+        client_id = f"NomNomApp_{int(time.time())}"
+        client = paho.Client(client_id)
+        
+        # Conexión con keepalive para redes en la nube
+        client.connect(broker, port, keepalive=60)
+        client.loop_start()
+        
         mensaje = json.dumps(payload_dict)
-        client.publish(topic_comunicacion, mensaje)
+        info = client.publish(topic_comunicacion, mensaje)
+        info.wait_for_publish(timeout=3) # Esperar a que el mensaje se entregue realmente
+        
+        client.loop_stop()
         client.disconnect()
         return True
     except Exception as e:
@@ -155,7 +165,7 @@ with st.sidebar:
         imagen_foto1 = Image.open("foto1.png")
         st.image(imagen_foto1, use_column_width=True)
     except Exception:
-        st.write("🐾 [foto1.png no encontrada]")
+        st.write("🐾 Menú de Control")
         
     pestana = st.radio("🎛️ Opciones", ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo Hogareño"])
 
@@ -179,7 +189,7 @@ if pestana == "🏠 Panel de Control e IoT":
             tamano = "pequena" if "Pequeña" in tipo_porcion else ("grande" if "Grande" in tipo_porcion else "mediana")
             resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": tamano})
             if resultado is True:
-                st.success(f"¡Ración {tipo_porcion} enviada al comedero!")
+                st.success(f"¡Ración {tipo_porcion} enviada al comedero correctamente!")
             else:
                 st.error(f"Error de conexión MQTT: {resultado}")
 
@@ -278,6 +288,8 @@ if pestana == "🏠 Panel de Control e IoT":
         res = enviar_mqtt({"dispositivo": "voz", "Act1": comando_voz.strip()})
         if res is True:
             st.success("📡 ¡Instrucción transmitida al dispositivo con éxito!")
+        else:
+            st.error(f"Error al enviar por MQTT: {res}")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -294,7 +306,7 @@ elif pestana == "👁️ Cámara y Monitoreo Hogareño":
         imagen_foto2 = Image.open("foto2.png")
         st.image(imagen_foto2, use_column_width=True)
     except Exception:
-        st.write("[ foto2.png no encontrada ]")
+        pass
 
     st.markdown("Aquí puedes observar la comida de tu mascota en tiempo real a través de la cámara del hogar.")
 
