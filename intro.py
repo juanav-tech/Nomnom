@@ -28,7 +28,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Estilos CSS con diseño lúdico y contraste corregido en las alertas
+# Estilos CSS con diseño lúdico, amigable y contraste absoluto para legibilidad
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap');
@@ -98,15 +98,8 @@ st.markdown("""
         font-weight: 700 !important;
     }
 
-    /* Corrección de alto contraste para las cajas de éxito, advertencia y error */
-    div.stAlert {
-        background-color: #FFFDF9 !important;
-        border: 2px solid #F4A261 !important;
-        border-radius: 12px !important;
-    }
-
     .stAlert p, .stAlert span, div[data-baseweb="notification"] div {
-        color: #1E293B !important;
+        color: #0F172A !important;
         font-weight: 700 !important;
     }
 
@@ -138,7 +131,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Configuración MQTT con tu tópico 'voicejuana'
+# Configuración MQTT robusta compatible con paho-mqtt < 2.0.0
 broker = "broker.mqttdashboard.com"
 port = 1883
 mqtt_topic = "voicejuana"
@@ -226,17 +219,17 @@ if pestana == "🏠 Panel de Control e IoT":
         if st.button("🚀 Servir Comida"):
             if "Pequeña" in tipo_porcion:
                 tamano = "pequena"
-                angulo_motor = 45
+                angulo_val = 45
             elif "Grande" in tipo_porcion:
                 tamano = "grande"
-                angulo_motor = 180
+                angulo_val = 180
             else:
                 tamano = "mediana"
-                angulo_motor = 90
+                angulo_val = 90
 
-            resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": tamano, "angulo": angulo_motor, "status": "GREEN"})
+            resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": tamano, "angulo": angulo_val, "status": "GREEN"})
             if resultado is True:
-                st.success(f"¡Ración {tipo_porcion} enviada al comedero correctamente!")
+                st.success(f"¡Ración {tipo_porcion} enviada y bombillo en VERDE!")
             else:
                 st.error(f"Error de conexión MQTT: {resultado}")
 
@@ -244,7 +237,7 @@ if pestana == "🏠 Panel de Control e IoT":
         if st.button("🔒 Cerrar Compuerta"):
             resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar", "angulo": 0, "status": "RED"})
             if resultado is True:
-                st.warning("Comando de cierre enviado con éxito (Indicador rojo en Wokwi).")
+                st.warning("Comando de cierre enviado y bombillo en ROJO.")
             else:
                 st.error(f"Error de conexión MQTT: {resultado}")
 
@@ -291,7 +284,7 @@ if pestana == "🏠 Panel de Control e IoT":
     if comando_voz:
         captured_text = comando_voz
 
-    # Filtrado y validación estricta de los 4 comandos permitidos con sus respectivos ángulos internos y cambio de color del bombillo
+    # Filtrado y validación estricta de los 4 comandos permitidos con cambio de color en el bombillo y ángulos correspondientes
     if captured_text:
         cmd_lower = captured_text.strip().lower()
         st.info(f"Procesando comando: **{captured_text}**")
@@ -304,24 +297,24 @@ if pestana == "🏠 Panel de Control e IoT":
         if es_cerrar:
             res = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar", "angulo": 0, "status": "RED"})
             if res is True:
-                st.warning("🔒 ¡Compuerta cerrada! Indicador cambiado a luz roja en Wokwi.")
+                st.warning("🔒 ¡Compuerta cerrada! Bombillo cambiado a luz ROJA en Wokwi.")
             else:
                 st.error(f"Error de conexión MQTT: {res}")
                 
         elif es_porcion_pequena or es_porcion_mediana or es_porcion_grande:
             if es_porcion_pequena:
                 porcion_str = "pequena"
-                angulo_motor = 45
+                angulo_val = 45
             elif es_porcion_grande:
                 porcion_str = "grande"
-                angulo_motor = 180
+                angulo_val = 180
             else:
                 porcion_str = "mediana"
-                angulo_motor = 90
+                angulo_val = 90
 
-            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": porcion_str, "angulo": angulo_motor, "status": "GREEN"})
+            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": porcion_str, "angulo": angulo_val, "status": "GREEN"})
             if res is True:
-                st.success(f"📡 ¡Comando detectado! Ración enviada al dispositivo con éxito.")
+                st.success(f"📡 ¡Comando detectado! Ración enviada y bombillo VERDE encendido en Wokwi.")
             else:
                 st.error(f"Error al enviar por MQTT: {res}")
         else:
