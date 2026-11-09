@@ -161,42 +161,34 @@ def enviar_mqtt(payload_dict):
     except Exception as e:
         return str(e)
 
-# Cargar el modelo Keras con caché y manejo seguro de rutas y compilación
+# Cargar el modelo Keras con diagnóstico de errores detallado
 @st.cache_resource
 def cargar_modelo_teachable():
     if not TF_DISPONIBLE:
+        st.error("⚠️ TensorFlow no está disponible en este entorno.")
         return None, None
     try:
-        # Intentar cargar desde el directorio actual y rutas relativas comunes
-        paths_to_try = [
-            'keras_model.h5',
-            './keras_model.h5',
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), 'keras_model.h5')
-        ]
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        model_path = os.path.join(base_dir, 'keras_model.h5')
+        labels_path = os.path.join(base_dir, 'labels.txt')
         
-        labels_to_try = [
-            'labels.txt',
-            './labels.txt',
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), 'labels.txt')
-        ]
+        # Validación explícita de existencia de archivos en disco
+        if not os.path.exists(model_path):
+            st.error(f"⚠️ No se encuentra el archivo en la ruta: {model_path}")
+            return None, None
+            
+        if not os.path.exists(labels_path):
+            st.error(f"⚠️ No se encuentra el archivo en la ruta: {labels_path}")
+            return None, None
+
+        model = load_model(model_path, compile=False)
         
-        model = None
-        for p in paths_to_try:
-            if os.path.exists(p):
-                model = load_model(p, compile=False)
-                break
-                
-        class_names = None
-        for l in labels_to_try:
-            if os.path.exists(l):
-                with open(l, 'r', encoding='utf-8') as f:
-                    class_names = [line.strip() for line in f.readlines()]
-                break
-                
-        if model is not None and class_names is not None:
-            return model, class_names
-        return None, None
+        with open(labels_path, 'r', encoding='utf-8') as f:
+            class_names = [line.strip() for line in f.readlines()]
+            
+        return model, class_names
     except Exception as e:
+        st.error(f"⚠️ Error crítico al cargar Keras: {str(e)}")
         return None, None
 
 # --- LAYOUT SUPERIOR: IMAGEN PRINCIPAL (coca.png) ---
