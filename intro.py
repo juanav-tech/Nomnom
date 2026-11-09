@@ -107,6 +107,10 @@ st.markdown("""
     /* ---------- Barra lateral ---------- */
     [data-testid="stSidebar"] { background-color: #FFF1E6; }
     [data-testid="stSidebar"] h3 { color: #1E293B; }
+    div[role="radiogroup"] label p {
+        color: #1E293B !important;
+        font-weight: 700 !important;
+    }
 
     /* ---------- Campos de entrada ---------- */
     .stTextInput input {
@@ -229,20 +233,29 @@ def encontrar_imagen(nombre):
     return None
 
 
+IMG_ERRORES = {}  # se reinicia en cada ejecución; guarda el error real de cada imagen
+
+
 def mostrar_imagen(nombre):
-    """Muestra la imagen sin importar la versión de Streamlit. Devuelve True si se mostró."""
-    ruta = encontrar_imagen(nombre)
-    if ruta is None:
-        return False
-    try:
-        img = Image.open(ruta)
+    """Abre la imagen igual que antes: Image.open("nombre.png") y use_column_width=True.
+    Si eso falla, prueba con la ruta junto al script y con una búsqueda por carpetas.
+    Devuelve True si se mostró."""
+    IMG_ERRORES.pop(nombre, None)
+    intentos = [nombre, os.path.join(BASE_DIR, nombre), encontrar_imagen(nombre)]
+    for ruta in intentos:
+        if not ruta:
+            continue
         try:
-            st.image(img, use_container_width=True)
-        except TypeError:
-            st.image(img, use_column_width=True)
-        return True
-    except Exception:
-        return False
+            imagen = Image.open(ruta)
+            try:
+                st.image(imagen, use_column_width=True)       # forma original
+            except TypeError:
+                st.image(imagen, use_container_width=True)    # Streamlit más nuevo
+            return True
+        except Exception as e:
+            IMG_ERRORES[nombre] = f"{type(e).__name__}: {e}"
+    IMG_ERRORES.setdefault(nombre, "Archivo no encontrado")
+    return False
 
 
 # Configuración MQTT
@@ -357,19 +370,15 @@ with st.sidebar:
     if api_key_input:
         os.environ['OPENAI_API_KEY'] = api_key_input
 
-    faltantes = [n for n in ("coca.png", "foto1.png", "foto2.png") if encontrar_imagen(n) is None]
-    if faltantes:
-        with st.expander("🔧 Imágenes no encontradas"):
-            st.write("Faltan:", ", ".join(faltantes))
-            st.write("Archivos en la carpeta de la app:")
-            st.code("\n".join(sorted(os.listdir(BASE_DIR))))
-
-tab_panel, tab_camara = st.tabs(["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo"])
+    pestana = st.radio(
+        "🎛️ Opciones",
+        ["🏠 Panel de Control e IoT", "👁️ Cámara y Monitoreo Hogareño"]
+    )
 
 # =========================================================================
 # MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ
 # =========================================================================
-with tab_panel:
+if pestana == "🏠 Panel de Control e IoT":
 
     chips_slot = st.empty()  # se llena al final, con el estado ya actualizado
 
@@ -518,7 +527,7 @@ with tab_panel:
 # =========================================================================
 # MÓDULO 2: CÁMARA Y MONITOREO HOGAREÑO CON foto2.png
 # =========================================================================
-with tab_camara:
+elif pestana == "👁️ Cámara y Monitoreo Hogareño":
 
     with st.container(border=True):
         st.subheader("📹 Monitoreo en Directo desde Casa")
@@ -564,3 +573,12 @@ with tab_camara:
             st.caption(f"Detalle técnico de IA: Detectado [{clase_detectada}] con {confianza:.1f}% de certeza")
 
 os.makedirs("temp", exist_ok=True)
+
+# Diagnóstico: solo aparece si alguna imagen no se pudo abrir
+if IMG_ERRORES:
+    with st.sidebar:
+        with st.expander("🔧 Imágenes con problemas"):
+            for nombre_img, detalle in IMG_ERRORES.items():
+                st.write(f"**{nombre_img}** → {detalle}")
+            st.write("Archivos que ve la app:")
+            st.code("\n".join(sorted(os.listdir(BASE_DIR))))
