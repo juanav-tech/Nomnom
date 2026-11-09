@@ -217,18 +217,27 @@ if pestana == "🏠 Panel de Control e IoT":
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
         if st.button("🚀 Servir Comida"):
-            tamano = "pequena" if "Pequeña" in tipo_porcion else ("grande" if "Grande" in tipo_porcion else "mediana")
-            resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": tamano, "status": "GREEN"})
+            if "Pequeña" in tipo_porcion:
+                tamano = "pequena"
+                angulo_motor = 45
+            elif "Grande" in tipo_porcion:
+                tamano = "grande"
+                angulo_motor = 180
+            else:
+                tamano = "mediana"
+                angulo_motor = 90
+
+            resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": tamano, "angulo": angulo_motor, "status": "GREEN"})
             if resultado is True:
-                st.success(f"¡Ración {tipo_porcion} enviada y bombillo en VERDE!")
+                st.success(f"¡Ración {tipo_porcion} enviada (Ángulo: {angulo_motor}°) y bombillo en VERDE!")
             else:
                 st.error(f"Error de conexión MQTT: {resultado}")
 
     with col_btn2:
         if st.button("🔒 Cerrar Compuerta"):
-            resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar", "status": "RED"})
+            resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar", "angulo": 0, "status": "RED"})
             if resultado is True:
-                st.warning("Comando de cierre enviado y bombillo en ROJO.")
+                st.warning("Comando de cierre enviado (Ángulo: 0°) y bombillo en ROJO.")
             else:
                 st.error(f"Error de conexión MQTT: {resultado}")
 
@@ -242,10 +251,10 @@ if pestana == "🏠 Panel de Control e IoT":
     st.markdown("""
         <div style="background-color: #FFF9F5; padding: 14px; border-radius: 10px; border-left: 5px solid #E76F51; margin-bottom: 15px;">
             <b>📌 Comandos permitidos para abrir o cerrar:</b><br>
-            • <i>"Porción pequeña"</i><br>
-            • <i>"Porción mediana"</i><br>
-            • <i>"Porción grande"</i><br>
-            • <i>"Cerrar compuerta"</i>
+            • <i>"Porción pequeña"</i> (45°)<br>
+            • <i>"Porción mediana"</i> (90°)<br>
+            • <i>"Porción grande"</i> (180°)<br>
+            • <i>"Cerrar compuerta"</i> (0°)
         </div>
     """, unsafe_allow_html=True)
 
@@ -275,7 +284,7 @@ if pestana == "🏠 Panel de Control e IoT":
     if comando_voz:
         captured_text = comando_voz
 
-    # Filtrado y validación estricta de los 4 comandos permitidos con cambio de color en el bombillo
+    # Filtrado y validación estricta de los 4 comandos permitidos con sus respectivos ángulos
     if captured_text:
         cmd_lower = captured_text.strip().lower()
         st.info(f"Procesando comando: **{captured_text}**")
@@ -286,17 +295,26 @@ if pestana == "🏠 Panel de Control e IoT":
         es_cerrar = "cerrar" in cmd_lower
 
         if es_cerrar:
-            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar", "status": "RED"})
+            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar", "angulo": 0, "status": "RED"})
             if res is True:
-                st.warning("🔒 ¡Compuerta cerrada! Bombillo cambiado a luz ROJA en Wokwi.")
+                st.warning("🔒 ¡Compuerta cerrada! Ángulo: 0° | Bombillo cambiado a luz ROJA en Wokwi.")
             else:
                 st.error(f"Error de conexión MQTT: {res}")
                 
         elif es_porcion_pequena or es_porcion_mediana or es_porcion_grande:
-            porcion_str = "pequena" if es_porcion_pequena else ("grande" if es_porcion_grande else "mediana")
-            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": porcion_str, "status": "GREEN"})
+            if es_porcion_pequena:
+                porcion_str = "pequena"
+                angulo_motor = 45
+            elif es_porcion_grande:
+                porcion_str = "grande"
+                angulo_motor = 180
+            else:
+                porcion_str = "mediana"
+                angulo_motor = 90
+
+            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": porcion_str, "angulo": angulo_motor, "status": "GREEN"})
             if res is True:
-                st.success(f"📡 ¡Comando detectado! Ración enviada y bombillo VERDE encendido en Wokwi.")
+                st.success(f"📡 ¡Comando detectado! Ración enviada (Ángulo: {angulo_motor}°) y bombillo VERDE encendido en Wokwi.")
             else:
                 st.error(f"Error al enviar por MQTT: {res}")
         else:
