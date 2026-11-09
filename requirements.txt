@@ -1,7 +1,7 @@
 streamlit
 Pillow
-numpy
-paho-mqtt
+numpy<2
+paho-mqtt<2.0.0
 openai
-tensorflow
+tensorflow==2.15.0
 h5py
