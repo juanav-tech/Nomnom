@@ -161,14 +161,18 @@ def enviar_mqtt(payload_dict):
     except Exception as e:
         return str(e)
 
-# Cargar el modelo Keras con caché
+# Cargar el modelo Keras con rutas absolutas seguras
 @st.cache_resource
 def cargar_modelo_teachable():
     if not TF_DISPONIBLE:
         return None, None
     try:
-        model = load_model('keras_model.h5', compile=False)
-        with open('labels.txt', 'r', encoding='utf-8') as f:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        model_path = os.path.join(base_dir, 'keras_model.h5')
+        labels_path = os.path.join(base_dir, 'labels.txt')
+        
+        model = load_model(model_path, compile=False)
+        with open(labels_path, 'r', encoding='utf-8') as f:
             class_names = [line.strip() for line in f.readlines()]
         return model, class_names
     except Exception as e:
@@ -179,8 +183,8 @@ col_img1, col_img_main, col_img3 = st.columns([1, 2, 1])
 
 with col_img_main:
     try:
-        imagen_coca = Image.open("coca.png")
-        st.image(imagen_coca, use_column_width=True)
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        st.image(os.path.join(base_dir, "coca.png"), use_column_width=True)
     except Exception:
         st.markdown("<div style='text-align: center; color: #E76F51; font-weight: bold;'>[ Imagen coca.png no encontrada ]</div>", unsafe_allow_html=True)
 
@@ -191,11 +195,11 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- BARRA LATERAL CON LA ILUSTRACIÓN foto1.png Y CAMPO PARA LA API KEY ---
+# --- BARRA LATERAL CON LA ILUSTRACIÓN Y CAMPO PARA LA API KEY ---
 with st.sidebar:
     try:
-        imagen_foto1 = Image.open("foto1.png")
-        st.image(imagen_foto1, use_column_width=True)
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        st.image(os.path.join(base_dir, "foto1.png"), use_column_width=True)
     except Exception:
         st.write("🐾 Menú de Control")
 
@@ -338,7 +342,7 @@ if pestana == "🏠 Panel de Control e IoT":
     st.markdown('</div>', unsafe_allow_html=True)
 
 # =========================================================================
-# MÓDULO 2: CÁMARA Y MONITOREO HOGAREÑO CON foto2.png (CLASE 1)
+# MÓDULO 2: CÁMARA Y MONITOREO HOGAREÑO
 # =========================================================================
 elif pestana == "👁️ Cámara y Monitoreo Hogareño":
     
@@ -346,8 +350,8 @@ elif pestana == "👁️ Cámara y Monitoreo Hogareño":
     st.subheader("📹 Monitoreo en Directo desde Casa")
     
     try:
-        imagen_foto2 = Image.open("foto2.png")
-        st.image(imagen_foto2, use_column_width=True)
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        st.image(os.path.join(base_dir, "foto2.png"), use_column_width=True)
     except Exception:
         pass
 
@@ -389,6 +393,7 @@ elif pestana == "👁️ Cámara y Monitoreo Hogareño":
     st.markdown('</div>', unsafe_allow_html=True)
 
 try:
-    os.mkdir("temp")
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    os.makedirs(os.path.join(base_dir, "temp"), exist_ok=True)
 except:
     pass
