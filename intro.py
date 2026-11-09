@@ -217,8 +217,8 @@ col_img1, col_img_main, col_img3 = st.columns([1, 2, 1])
 
 with col_img_main:
     try:
-        imagen_coca = Image.open(os.path.join(BASE_DIR, "coca.png"))
-        st.image(imagen_coca, use_container_width=True)
+        imagen_coca = Image.open("coca.png")
+        st.image(imagen_coca, use_column_width=True)
     except Exception:
         st.markdown("<div style='text-align: center; color: #E76F51; font-weight: bold;'>[ Imagen coca.png no encontrada ]</div>", unsafe_allow_html=True)
 
@@ -232,8 +232,8 @@ st.markdown("""
 # --- BARRA LATERAL CON LA ILUSTRACIÓN foto1.png Y CAMPO PARA LA API KEY ---
 with st.sidebar:
     try:
-        imagen_foto1 = Image.open(os.path.join(BASE_DIR, "foto1.png"))
-        st.image(imagen_foto1, use_container_width=True)
+        imagen_foto1 = Image.open("foto1.png")
+        st.image(imagen_foto1, use_column_width=True)
     except Exception:
         st.write("🐾 Menú de Control")
 
@@ -384,8 +384,8 @@ elif pestana == "👁️ Cámara y Monitoreo Hogareño":
     st.subheader("📹 Monitoreo en Directo desde Casa")
 
     try:
-        imagen_foto2 = Image.open(os.path.join(BASE_DIR, "foto2.png"))
-        st.image(imagen_foto2, use_container_width=True)
+        imagen_foto2 = Image.open("foto2.png")
+        st.image(imagen_foto2, use_column_width=True)
     except Exception:
         pass
 
