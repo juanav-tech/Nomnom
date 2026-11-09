@@ -6,6 +6,8 @@ import time
 import json
 import paho.mqtt.client as paho
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Importación segura de OpenAI para Whisper
 try:
     from openai import OpenAI
@@ -13,13 +15,16 @@ try:
 except Exception:
     HAS_OPENAI = False
 
-# Importación segura de TensorFlow y Keras
+# Importación segura de TensorFlow y Keras (guardando el error real)
+TF_ERROR = None
 try:
     import tensorflow as tf
     from tensorflow.keras.models import load_model
+    from tensorflow.keras.layers import DepthwiseConv2D
     TF_DISPONIBLE = True
-except Exception:
+except Exception as e:
     TF_DISPONIBLE = False
+    TF_ERROR = f"No se pudo importar TensorFlow: {e}"
 
 # Configuración de página con la identidad NomNom
 st.set_page_config(
@@ -141,14 +146,26 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Configuración MQTT robusta compatible con paho-mqtt < 2.0.0
+# Configuración MQTT
 broker = "broker.mqttdashboard.com"
 port = 1883
 mqtt_topic = "voicejuana"
 
+
+def crear_cliente_mqtt():
+    """Crea el cliente MQTT compatible con paho-mqtt 1.x y 2.x."""
+    nombre = f"NomNomClient_{int(time.time())}"
+    try:
+        # paho-mqtt 2.x
+        return paho.Client(paho.CallbackAPIVersion.VERSION1, nombre)
+    except AttributeError:
+        # paho-mqtt 1.x
+        return paho.Client(nombre)
+
+
 def enviar_mqtt(payload_dict):
     try:
-        client = paho.Client(f"NomNomClient_{int(time.time())}")
+        client = crear_cliente_mqtt()
         client.connect(broker, port, keepalive=60)
         client.loop_start()
         mensaje = json.dumps(payload_dict)
@@ -161,43 +178,47 @@ def enviar_mqtt(payload_dict):
     except Exception as e:
         return str(e)
 
-# Cargar el modelo Keras con diagnóstico de errores detallado
+
+# Cargar el modelo Keras con caché (devuelve el error real si falla)
 @st.cache_resource
 def cargar_modelo_teachable():
     if not TF_DISPONIBLE:
-        st.error("⚠️ TensorFlow no está disponible en este entorno.")
-        return None, None
-    try:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        model_path = os.path.join(base_dir, 'keras_model.h5')
-        labels_path = os.path.join(base_dir, 'labels.txt')
-        
-        # Validación explícita de existencia de archivos en disco
-        if not os.path.exists(model_path):
-            st.error(f"⚠️ No se encuentra el archivo en la ruta: {model_path}")
-            return None, None
-            
-        if not os.path.exists(labels_path):
-            st.error(f"⚠️ No se encuentra el archivo en la ruta: {labels_path}")
-            return None, None
+        return None, None, TF_ERROR
 
-        model = load_model(model_path, compile=False)
-        
-        with open(labels_path, 'r', encoding='utf-8') as f:
+    ruta_modelo = os.path.join(BASE_DIR, "keras_model.h5")
+    ruta_labels = os.path.join(BASE_DIR, "labels.txt")
+
+    if not os.path.exists(ruta_modelo):
+        return None, None, f"No existe keras_model.h5. Archivos en la carpeta: {os.listdir(BASE_DIR)}"
+    if not os.path.exists(ruta_labels):
+        return None, None, f"No existe labels.txt. Archivos en la carpeta: {os.listdir(BASE_DIR)}"
+
+    # Parche para el argumento 'groups' que incluye Teachable Machine
+    class CompatDepthwiseConv2D(DepthwiseConv2D):
+        def __init__(self, *args, **kwargs):
+            kwargs.pop("groups", None)
+            super().__init__(*args, **kwargs)
+
+    try:
+        model = load_model(
+            ruta_modelo,
+            compile=False,
+            custom_objects={"DepthwiseConv2D": CompatDepthwiseConv2D},
+        )
+        with open(ruta_labels, "r", encoding="utf-8") as f:
             class_names = [line.strip() for line in f.readlines()]
-            
-        return model, class_names
+        return model, class_names, None
     except Exception as e:
-        st.error(f"⚠️ Error crítico al cargar Keras: {str(e)}")
-        return None, None
+        return None, None, f"Error al leer el modelo: {e}"
+
 
 # --- LAYOUT SUPERIOR: IMAGEN PRINCIPAL (coca.png) ---
 col_img1, col_img_main, col_img3 = st.columns([1, 2, 1])
 
 with col_img_main:
     try:
-        imagen_coca = Image.open("coca.png")
-        st.image(imagen_coca, use_column_width=True)
+        imagen_coca = Image.open(os.path.join(BASE_DIR, "coca.png"))
+        st.image(imagen_coca, use_container_width=True)
     except Exception:
         st.markdown("<div style='text-align: center; color: #E76F51; font-weight: bold;'>[ Imagen coca.png no encontrada ]</div>", unsafe_allow_html=True)
 
@@ -211,16 +232,16 @@ st.markdown("""
 # --- BARRA LATERAL CON LA ILUSTRACIÓN foto1.png Y CAMPO PARA LA API KEY ---
 with st.sidebar:
     try:
-        imagen_foto1 = Image.open("foto1.png")
-        st.image(imagen_foto1, use_column_width=True)
+        imagen_foto1 = Image.open(os.path.join(BASE_DIR, "foto1.png"))
+        st.image(imagen_foto1, use_container_width=True)
     except Exception:
         st.write("🐾 Menú de Control")
 
     st.markdown("### 🔑 Configuración de IA")
     api_key_input = st.text_input(
-        "OpenAI API Key:", 
-        type="password", 
-        placeholder="sk-...", 
+        "OpenAI API Key:",
+        type="password",
+        placeholder="sk-...",
         key="main_api_key_input"
     )
     if api_key_input:
@@ -232,7 +253,7 @@ with st.sidebar:
 # MÓDULO 1: CONTROL MANUAL Y ASISTENTE DE VOZ
 # =========================================================================
 if pestana == "🏠 Panel de Control e IoT":
-    
+
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("🍽️ Panel de Alimentación Rápida")
     st.markdown("Selecciona el tamaño de la ración que deseas dispensar y envía la orden al instante.")
@@ -275,7 +296,7 @@ if pestana == "🏠 Panel de Control e IoT":
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("🎙️ Asistente por Voz Inteligente")
     st.markdown("Graba tu voz diciendo **exactamente uno de los siguientes comandos permitidos**:")
-    
+
     st.markdown("""
         <div style="background-color: #FFF9F5; padding: 14px; border-radius: 10px; border-left: 5px solid #E76F51; margin-bottom: 15px;">
             <b>📌 Comandos permitidos para abrir o cerrar:</b><br>
@@ -316,7 +337,7 @@ if pestana == "🏠 Panel de Control e IoT":
     if captured_text:
         cmd_lower = captured_text.strip().lower()
         st.info(f"Procesando comando: **{captured_text}**")
-        
+
         es_cerrar = "cerrar" in cmd_lower
         es_pequena = "pequeña" in cmd_lower or "pequena" in cmd_lower
         es_grande = "grande" in cmd_lower
@@ -328,21 +349,21 @@ if pestana == "🏠 Panel de Control e IoT":
                 st.warning("🔒 ¡Compuerta cerrada! Indicador cambiado a luz roja en Wokwi.")
             else:
                 st.error(f"Error de conexión MQTT: {res}")
-                
+
         elif es_pequena:
             res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": "pequena", "angulo": 45, "status": "GREEN"})
             if res is True:
                 st.success("📡 ¡Comando detectado! Porción pequeña enviada al dispositivo.")
             else:
                 st.error(f"Error al enviar por MQTT: {res}")
-                
+
         elif es_grande:
             res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": "grande", "angulo": 180, "status": "GREEN"})
             if res is True:
                 st.success("📡 ¡Comando detectado! Porción grande enviada al dispositivo.")
             else:
                 st.error(f"Error al enviar por MQTT: {res}")
-                
+
         elif es_mediana:
             res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": "mediana", "angulo": 90, "status": "GREEN"})
             if res is True:
@@ -358,54 +379,53 @@ if pestana == "🏠 Panel de Control e IoT":
 # MÓDULO 2: CÁMARA Y MONITOREO HOGAREÑO CON foto2.png (CLASE 1)
 # =========================================================================
 elif pestana == "👁️ Cámara y Monitoreo Hogareño":
-    
+
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("📹 Monitoreo en Directo desde Casa")
-    
+
     try:
-        imagen_foto2 = Image.open("foto2.png")
-        st.image(imagen_foto2, use_column_width=True)
+        imagen_foto2 = Image.open(os.path.join(BASE_DIR, "foto2.png"))
+        st.image(imagen_foto2, use_container_width=True)
     except Exception:
         pass
 
     st.markdown("Aquí puedes observar la comida de tu mascota en tiempo real a través de la cámara del hogar.")
 
-    modelo, clases = cargar_modelo_teachable()
+    modelo, clases, error_modelo = cargar_modelo_teachable()
 
     if modelo is None:
-        st.error("⚠️ No se pudieron cargar los archivos `keras_model.h5` o `labels.txt` en el repositorio.")
-    else:
-        captura_camara = st.camera_input("Vista del plato en casa")
+        st.error("⚠️ No se pudo cargar el modelo de Teachable Machine.")
+        st.code(error_modelo)  # Aquí verás la causa exacta
 
-        if captura_camara is not None:
-            image = Image.open(captura_camara).convert("RGB")
-            
-            size = (224, 224)
-            image_resized = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
-            image_array = np.asarray(image_resized)
-            
-            normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1
-            data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
-            data[0] = normalized_image_array
+    # La cámara se muestra siempre, aunque el modelo falle
+    captura_camara = st.camera_input("Vista del plato en casa")
 
-            prediccion = modelo.predict(data)
-            indice_clase = np.argmax(prediccion[0])
-            clase_detectada = clases[indice_clase]
-            confianza = float(prediccion[0][indice_clase]) * 100
+    if captura_camara is not None and modelo is not None:
+        image = Image.open(captura_camara).convert("RGB")
 
-            st.divider()
-            st.markdown("### 🔍 Análisis del Comedero:")
+        size = (224, 224)
+        image_resized = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
+        image_array = np.asarray(image_resized)
 
-            if indice_clase == 1 or "clase 1" in clase_detectada.lower() or "lleno" in clase_detectada.lower() or "comida" in clase_detectada.lower():
-                st.success("🟢 Aún hay comida en comedero")
-            else:
-                st.warning("🔴 no se detectó comida en el comedero")
-                
-            st.caption(f"Detalle técnico de IA: Detectado [{clase_detectada}] con {confianza:.1f}% de certeza")
+        normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1
+        data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
+        data[0] = normalized_image_array
+
+        prediccion = modelo.predict(data)
+        indice_clase = int(np.argmax(prediccion[0]))
+        clase_detectada = clases[indice_clase]
+        confianza = float(prediccion[0][indice_clase]) * 100
+
+        st.divider()
+        st.markdown("### 🔍 Análisis del Comedero:")
+
+        if indice_clase == 1 or "clase 1" in clase_detectada.lower() or "lleno" in clase_detectada.lower() or "comida" in clase_detectada.lower():
+            st.success("🟢 Aún hay comida en comedero")
+        else:
+            st.warning("🔴 no se detectó comida en el comedero")
+
+        st.caption(f"Detalle técnico de IA: Detectado [{clase_detectada}] con {confianza:.1f}% de certeza")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
-try:
-    os.mkdir("temp")
-except:
-    pass
+os.makedirs("temp", exist_ok=True)
