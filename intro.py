@@ -28,7 +28,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Estilos CSS con diseño lúdico y contraste absoluto optimizado para legibilidad
+# Estilos CSS optimizados para contraste absoluto y legibilidad de textos en alertas
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap');
@@ -98,14 +98,18 @@ st.markdown("""
         font-weight: 700 !important;
     }
 
-    /* Textos y fondos perfectamente legibles para las alertas */
+    /* Forzar texto blanco de alta legibilidad en alertas de éxito y advertencia */
     div.stAlert {
         border-radius: 12px !important;
-        border: 2px solid #F4A261 !important;
+        border: 2px solid #2D2D2D !important;
+    }
+
+    div[data-baseweb="notification"] {
+        background-color: #2D3748 !important;
     }
 
     .stAlert p, .stAlert span, div[data-baseweb="notification"] div {
-        color: #1E293B !important;
+        color: #FFFFFF !important;
         font-weight: 700 !important;
     }
 
@@ -291,15 +295,15 @@ if pestana == "🏠 Panel de Control e IoT":
     if comando_voz:
         captured_text = comando_voz
 
-    # Filtrado y validación estricta de los 4 comandos permitidos con sus respectivos ángulos y estados de LED
+    # Filtrado y validación estricta con asignación independiente de ángulos y estados de LED
     if captured_text:
         cmd_lower = captured_text.strip().lower()
         st.info(f"Procesando comando: **{captured_text}**")
         
-        es_porcion_pequena = "pequeña" in cmd_lower or "pequena" in cmd_lower
-        es_porcion_mediana = "mediana" in cmd_lower
-        es_porcion_grande = "grande" in cmd_lower
         es_cerrar = "cerrar" in cmd_lower
+        es_pequena = "pequeña" in cmd_lower or "pequena" in cmd_lower
+        es_grande = "grande" in cmd_lower
+        es_mediana = "mediana" in cmd_lower
 
         if es_cerrar:
             res = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar", "angulo": 0, "status": "RED"})
@@ -308,20 +312,24 @@ if pestana == "🏠 Panel de Control e IoT":
             else:
                 st.error(f"Error de conexión MQTT: {res}")
                 
-        elif es_porcion_pequena or es_porcion_mediana or es_porcion_grande:
-            if es_porcion_pequena:
-                porcion_str = "pequena"
-                angulo_val = 45
-            elif es_porcion_grande:
-                porcion_str = "grande"
-                angulo_val = 180
-            else:
-                porcion_str = "mediana"
-                angulo_val = 90
-
-            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": porcion_str, "angulo": angulo_val, "status": "GREEN"})
+        elif es_pequena:
+            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": "pequena", "angulo": 45, "status": "GREEN"})
             if res is True:
-                st.success(f"📡 ¡Comando detectado! Ración enviada al dispositivo con éxito.")
+                st.success("📡 ¡Comando detectado! Porción pequeña enviada al dispositivo.")
+            else:
+                st.error(f"Error al enviar por MQTT: {res}")
+                
+        elif es_grande:
+            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": "grande", "angulo": 180, "status": "GREEN"})
+            if res is True:
+                st.success("📡 ¡Comando detectado! Porción grande enviada al dispositivo.")
+            else:
+                st.error(f"Error al enviar por MQTT: {res}")
+                
+        elif es_mediana:
+            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": "mediana", "angulo": 90, "status": "GREEN"})
+            if res is True:
+                st.success("📡 ¡Comando detectado! Porción mediana enviada al dispositivo.")
             else:
                 st.error(f"Error al enviar por MQTT: {res}")
         else:
