@@ -281,24 +281,40 @@ mqtt_topic = "voicejuana"
 
 def crear_cliente_mqtt():
     """Cliente MQTT compatible con paho-mqtt 1.x y 2.x."""
-    nombre = f"NomNomClient_{int(time.time())}"
+    import uuid
+    nombre = f"NomNomClient_{uuid.uuid4().hex[:8]}"
     try:
         return paho.Client(paho.CallbackAPIVersion.VERSION1, nombre)  # paho 2.x
     except AttributeError:
         return paho.Client(nombre)  # paho 1.x
 
 
+@st.cache_resource
+def obtener_cliente_mqtt():
+    """Un único cliente MQTT que se mantiene conectado (reconecta solo).
+    Evita conectar y desconectar en cada clic."""
+    client = crear_cliente_mqtt()
+    client.connect(broker, port, keepalive=30)
+    client.loop_start()
+    return client
+
+
 def enviar_mqtt(payload_dict):
     try:
-        client = crear_cliente_mqtt()
-        client.connect(broker, port, keepalive=60)
-        client.loop_start()
-        mensaje = json.dumps(payload_dict)
-        info = client.publish(mqtt_topic, mensaje)
+        client = obtener_cliente_mqtt()
+
+        # Si la conexión se cayó, espera brevemente a la reconexión automática
+        for _ in range(20):
+            if client.is_connected():
+                break
+            time.sleep(0.1)
+        else:
+            return "Sin conexión con el broker MQTT"
+
+        info = client.publish(mqtt_topic, json.dumps(payload_dict), qos=1)
         info.wait_for_publish(timeout=3)
-        time.sleep(0.5)
-        client.loop_stop()
-        client.disconnect()
+        if not info.is_published():
+            return "El broker no confirmó la recepción del mensaje"
         return True
     except Exception as e:
         return str(e)
