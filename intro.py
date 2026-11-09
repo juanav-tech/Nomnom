@@ -28,7 +28,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Estilos CSS con diseño lúdico, amigable y contraste absoluto para legibilidad
+# Estilos CSS con diseño lúdico y contraste absoluto optimizado para legibilidad
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap');
@@ -98,8 +98,14 @@ st.markdown("""
         font-weight: 700 !important;
     }
 
+    /* Textos y fondos perfectamente legibles para las alertas */
+    div.stAlert {
+        border-radius: 12px !important;
+        border: 2px solid #F4A261 !important;
+    }
+
     .stAlert p, .stAlert span, div[data-baseweb="notification"] div {
-        color: #0F172A !important;
+        color: #1E293B !important;
         font-weight: 700 !important;
     }
 
@@ -144,7 +150,7 @@ def enviar_mqtt(payload_dict):
         mensaje = json.dumps(payload_dict)
         info = client.publish(mqtt_topic, mensaje)
         info.wait_for_publish(timeout=3)
-        time.sleep(0.5)  # Asegura la transmisión completa del paquete al broker
+        time.sleep(0.5)
         client.loop_stop()
         client.disconnect()
         return True
@@ -208,7 +214,7 @@ if pestana == "🏠 Panel de Control e IoT":
     
     st.markdown('<div class="card">', unsafe_allow_html=True)
     st.subheader("🍽️ Panel de Alimentación Rápida")
-    st.markdown("Selecciona el tamaño de la porción que deseas dispensar y envía la orden al instante.")
+    st.markdown("Selecciona el tamaño de la ración que deseas dispensar y envía la orden al instante.")
 
     tipo_porcion = st.selectbox(
         "📏 Tamaño de la ración:",
@@ -285,7 +291,7 @@ if pestana == "🏠 Panel de Control e IoT":
     if comando_voz:
         captured_text = comando_voz
 
-    # Filtrado y validación estricta de los 4 comandos permitidos con envío de ángulo y LED correspondientes
+    # Filtrado y validación estricta de los 4 comandos permitidos con sus respectivos ángulos y estados de LED
     if captured_text:
         cmd_lower = captured_text.strip().lower()
         st.info(f"Procesando comando: **{captured_text}**")
