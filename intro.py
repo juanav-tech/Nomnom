@@ -1,4 +1,6 @@
 import os
+import io
+import base64
 import html
 import streamlit as st
 from PIL import Image, ImageOps
@@ -246,11 +248,24 @@ def mostrar_imagen(nombre):
         if not ruta:
             continue
         try:
-            imagen = Image.open(ruta)
-            try:
-                st.image(imagen, use_column_width=True)       # forma original
-            except TypeError:
-                st.image(imagen, use_container_width=True)    # Streamlit más nuevo
+            imagen = Image.open(ruta)          # mismo acceso que antes
+            imagen.load()
+            # Normalizar modo de color y limitar tamaño
+            if imagen.mode not in ("RGB", "RGBA"):
+                imagen = imagen.convert("RGBA" if "transparency" in imagen.info or imagen.mode in ("LA", "P", "PA") else "RGB")
+            if imagen.width > 900:
+                alto = int(imagen.height * 900 / imagen.width)
+                imagen = imagen.resize((900, alto), Image.Resampling.LANCZOS)
+
+            # Incrustar la imagen directamente en el HTML (no depende del servidor de medios)
+            buffer = io.BytesIO()
+            imagen.save(buffer, format="PNG")
+            b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+            st.markdown(
+                f'<img src="data:image/png;base64,{b64}" alt="{html.escape(nombre)}" '
+                f'style="width:100%; height:auto; border-radius:16px; display:block; margin:0 auto 12px auto;">',
+                unsafe_allow_html=True
+            )
             return True
         except Exception as e:
             IMG_ERRORES[nombre] = f"{type(e).__name__}: {e}"
