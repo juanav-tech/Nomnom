@@ -144,6 +144,7 @@ def enviar_mqtt(payload_dict):
         mensaje = json.dumps(payload_dict)
         info = client.publish(mqtt_topic, mensaje)
         info.wait_for_publish(timeout=3)
+        time.sleep(0.5)  # Asegura la transmisión completa del paquete al broker
         client.loop_stop()
         client.disconnect()
         return True
@@ -229,7 +230,7 @@ if pestana == "🏠 Panel de Control e IoT":
 
             resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": tamano, "angulo": angulo_val, "status": "GREEN"})
             if resultado is True:
-                st.success(f"¡Ración {tipo_porcion} enviada y bombillo en VERDE!")
+                st.success(f"¡Ración {tipo_porcion} enviada al comedero correctamente!")
             else:
                 st.error(f"Error de conexión MQTT: {resultado}")
 
@@ -237,7 +238,7 @@ if pestana == "🏠 Panel de Control e IoT":
         if st.button("🔒 Cerrar Compuerta"):
             resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar", "angulo": 0, "status": "RED"})
             if resultado is True:
-                st.warning("Comando de cierre enviado y bombillo en ROJO.")
+                st.warning("Comando de cierre enviado con éxito (Indicador rojo en Wokwi).")
             else:
                 st.error(f"Error de conexión MQTT: {resultado}")
 
@@ -284,7 +285,7 @@ if pestana == "🏠 Panel de Control e IoT":
     if comando_voz:
         captured_text = comando_voz
 
-    # Filtrado y validación estricta de los 4 comandos permitidos con cambio de color en el bombillo y ángulos correspondientes
+    # Filtrado y validación estricta de los 4 comandos permitidos con envío de ángulo y LED correspondientes
     if captured_text:
         cmd_lower = captured_text.strip().lower()
         st.info(f"Procesando comando: **{captured_text}**")
@@ -297,7 +298,7 @@ if pestana == "🏠 Panel de Control e IoT":
         if es_cerrar:
             res = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar", "angulo": 0, "status": "RED"})
             if res is True:
-                st.warning("🔒 ¡Compuerta cerrada! Bombillo cambiado a luz ROJA en Wokwi.")
+                st.warning("🔒 ¡Compuerta cerrada! Indicador cambiado a luz roja en Wokwi.")
             else:
                 st.error(f"Error de conexión MQTT: {res}")
                 
@@ -314,7 +315,7 @@ if pestana == "🏠 Panel de Control e IoT":
 
             res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": porcion_str, "angulo": angulo_val, "status": "GREEN"})
             if res is True:
-                st.success(f"📡 ¡Comando detectado! Ración enviada y bombillo VERDE encendido en Wokwi.")
+                st.success(f"📡 ¡Comando detectado! Ración enviada al dispositivo con éxito.")
             else:
                 st.error(f"Error al enviar por MQTT: {res}")
         else:
