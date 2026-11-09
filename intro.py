@@ -161,20 +161,41 @@ def enviar_mqtt(payload_dict):
     except Exception as e:
         return str(e)
 
-# Cargar el modelo Keras con rutas absolutas seguras
+# Cargar el modelo Keras con caché y manejo seguro de rutas y compilación
 @st.cache_resource
 def cargar_modelo_teachable():
     if not TF_DISPONIBLE:
         return None, None
     try:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        model_path = os.path.join(base_dir, 'keras_model.h5')
-        labels_path = os.path.join(base_dir, 'labels.txt')
+        # Intentar cargar desde el directorio actual y rutas relativas comunes
+        paths_to_try = [
+            'keras_model.h5',
+            './keras_model.h5',
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), 'keras_model.h5')
+        ]
         
-        model = load_model(model_path, compile=False)
-        with open(labels_path, 'r', encoding='utf-8') as f:
-            class_names = [line.strip() for line in f.readlines()]
-        return model, class_names
+        labels_to_try = [
+            'labels.txt',
+            './labels.txt',
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), 'labels.txt')
+        ]
+        
+        model = None
+        for p in paths_to_try:
+            if os.path.exists(p):
+                model = load_model(p, compile=False)
+                break
+                
+        class_names = None
+        for l in labels_to_try:
+            if os.path.exists(l):
+                with open(l, 'r', encoding='utf-8') as f:
+                    class_names = [line.strip() for line in f.readlines()]
+                break
+                
+        if model is not None and class_names is not None:
+            return model, class_names
+        return None, None
     except Exception as e:
         return None, None
 
@@ -183,8 +204,8 @@ col_img1, col_img_main, col_img3 = st.columns([1, 2, 1])
 
 with col_img_main:
     try:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        st.image(os.path.join(base_dir, "coca.png"), use_column_width=True)
+        imagen_coca = Image.open("coca.png")
+        st.image(imagen_coca, use_column_width=True)
     except Exception:
         st.markdown("<div style='text-align: center; color: #E76F51; font-weight: bold;'>[ Imagen coca.png no encontrada ]</div>", unsafe_allow_html=True)
 
@@ -195,11 +216,11 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- BARRA LATERAL CON LA ILUSTRACIÓN Y CAMPO PARA LA API KEY ---
+# --- BARRA LATERAL CON LA ILUSTRACIÓN foto1.png Y CAMPO PARA LA API KEY ---
 with st.sidebar:
     try:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        st.image(os.path.join(base_dir, "foto1.png"), use_column_width=True)
+        imagen_foto1 = Image.open("foto1.png")
+        st.image(imagen_foto1, use_column_width=True)
     except Exception:
         st.write("🐾 Menú de Control")
 
@@ -297,103 +318,3 @@ if pestana == "🏠 Panel de Control e IoT":
     # Opción manual complementaria
     comando_voz = st.text_input("O ingresa tu comando de forma manual:", key="txt_voz", placeholder="Ej: porción pequeña, cerrar compuerta...")
     if comando_voz:
-        captured_text = comando_voz
-
-    # Filtrado y validación estricta con asignación independiente de ángulos y estados de LED
-    if captured_text:
-        cmd_lower = captured_text.strip().lower()
-        st.info(f"Procesando comando: **{captured_text}**")
-        
-        es_cerrar = "cerrar" in cmd_lower
-        es_pequena = "pequeña" in cmd_lower or "pequena" in cmd_lower
-        es_grande = "grande" in cmd_lower
-        es_mediana = "mediana" in cmd_lower
-
-        if es_cerrar:
-            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar", "angulo": 0, "status": "RED"})
-            if res is True:
-                st.warning("🔒 ¡Compuerta cerrada! Indicador cambiado a luz roja en Wokwi.")
-            else:
-                st.error(f"Error de conexión MQTT: {res}")
-                
-        elif es_pequena:
-            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": "pequena", "angulo": 45, "status": "GREEN"})
-            if res is True:
-                st.success("📡 ¡Comando detectado! Porción pequeña enviada al dispositivo.")
-            else:
-                st.error(f"Error al enviar por MQTT: {res}")
-                
-        elif es_grande:
-            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": "grande", "angulo": 180, "status": "GREEN"})
-            if res is True:
-                st.success("📡 ¡Comando detectado! Porción grande enviada al dispositivo.")
-            else:
-                st.error(f"Error al enviar por MQTT: {res}")
-                
-        elif es_mediana:
-            res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": "mediana", "angulo": 90, "status": "GREEN"})
-            if res is True:
-                st.success("📡 ¡Comando detectado! Porción mediana enviada al dispositivo.")
-            else:
-                st.error(f"Error al enviar por MQTT: {res}")
-        else:
-            st.error("⚠️ Comando no reconocido. Solo se permite: 'Porción pequeña', 'Porción mediana', 'Porción grande' o 'Cerrar compuerta'.")
-
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# =========================================================================
-# MÓDULO 2: CÁMARA Y MONITOREO HOGAREÑO
-# =========================================================================
-elif pestana == "👁️ Cámara y Monitoreo Hogareño":
-    
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("📹 Monitoreo en Directo desde Casa")
-    
-    try:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        st.image(os.path.join(base_dir, "foto2.png"), use_column_width=True)
-    except Exception:
-        pass
-
-    st.markdown("Aquí puedes observar la comida de tu mascota en tiempo real a través de la cámara del hogar.")
-
-    modelo, clases = cargar_modelo_teachable()
-
-    if modelo is None:
-        st.error("⚠️ No se pudieron cargar los archivos `keras_model.h5` o `labels.txt` en el repositorio.")
-    else:
-        captura_camara = st.camera_input("Vista del plato en casa")
-
-        if captura_camara is not None:
-            image = Image.open(captura_camara).convert("RGB")
-            
-            size = (224, 224)
-            image_resized = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
-            image_array = np.asarray(image_resized)
-            
-            normalized_image_array = (image_array.astype(np.float32) / 127.5) - 1
-            data = np.ndarray(shape=(1, 224, 224, 3), dtype=np.float32)
-            data[0] = normalized_image_array
-
-            prediccion = modelo.predict(data)
-            indice_clase = np.argmax(prediccion[0])
-            clase_detectada = clases[indice_clase]
-            confianza = float(prediccion[0][indice_clase]) * 100
-
-            st.divider()
-            st.markdown("### 🔍 Análisis del Comedero:")
-
-            if indice_clase == 1 or "clase 1" in clase_detectada.lower() or "lleno" in clase_detectada.lower() or "comida" in clase_detectada.lower():
-                st.success("🟢 Aún hay comida en comedero")
-            else:
-                st.warning("🔴 no se detectó comida en el comedero")
-                
-            st.caption(f"Detalle técnico de IA: Detectado [{clase_detectada}] con {confianza:.1f}% de certeza")
-
-    st.markdown('</div>', unsafe_allow_html=True)
-
-try:
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    os.makedirs(os.path.join(base_dir, "temp"), exist_ok=True)
-except:
-    pass
