@@ -131,7 +131,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Configuración MQTT robusta compatible con paho-mqtt < 2.0.0
+# Configuración MQTT con tu tópico 'voicejuana'
 broker = "broker.mqttdashboard.com"
 port = 1883
 mqtt_topic = "voicejuana"
@@ -229,7 +229,7 @@ if pestana == "🏠 Panel de Control e IoT":
 
             resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": tamano, "angulo": angulo_motor, "status": "GREEN"})
             if resultado is True:
-                st.success(f"¡Ración {tipo_porcion} enviada (Ángulo: {angulo_motor}°) y bombillo en VERDE!")
+                st.success(f"¡Ración {tipo_porcion} enviada al comedero correctamente!")
             else:
                 st.error(f"Error de conexión MQTT: {resultado}")
 
@@ -237,7 +237,7 @@ if pestana == "🏠 Panel de Control e IoT":
         if st.button("🔒 Cerrar Compuerta"):
             resultado = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar", "angulo": 0, "status": "RED"})
             if resultado is True:
-                st.warning("Comando de cierre enviado (Ángulo: 0°) y bombillo en ROJO.")
+                st.warning("Comando de cierre enviado con éxito (Indicador rojo en Wokwi).")
             else:
                 st.error(f"Error de conexión MQTT: {resultado}")
 
@@ -251,10 +251,10 @@ if pestana == "🏠 Panel de Control e IoT":
     st.markdown("""
         <div style="background-color: #FFF9F5; padding: 14px; border-radius: 10px; border-left: 5px solid #E76F51; margin-bottom: 15px;">
             <b>📌 Comandos permitidos para abrir o cerrar:</b><br>
-            • <i>"Porción pequeña"</i> (45°)<br>
-            • <i>"Porción mediana"</i> (90°)<br>
-            • <i>"Porción grande"</i> (180°)<br>
-            • <i>"Cerrar compuerta"</i> (0°)
+            • <i>"Porción pequeña"</i><br>
+            • <i>"Porción mediana"</i><br>
+            • <i>"Porción grande"</i><br>
+            • <i>"Cerrar compuerta"</i>
         </div>
     """, unsafe_allow_html=True)
 
@@ -284,7 +284,7 @@ if pestana == "🏠 Panel de Control e IoT":
     if comando_voz:
         captured_text = comando_voz
 
-    # Filtrado y validación estricta de los 4 comandos permitidos con sus respectivos ángulos
+    # Filtrado y validación estricta de los 4 comandos permitidos con sus respectivos ángulos internos y cambio de color del bombillo
     if captured_text:
         cmd_lower = captured_text.strip().lower()
         st.info(f"Procesando comando: **{captured_text}**")
@@ -297,7 +297,7 @@ if pestana == "🏠 Panel de Control e IoT":
         if es_cerrar:
             res = enviar_mqtt({"dispositivo": "dispensador", "accion": "cerrar", "angulo": 0, "status": "RED"})
             if res is True:
-                st.warning("🔒 ¡Compuerta cerrada! Ángulo: 0° | Bombillo cambiado a luz ROJA en Wokwi.")
+                st.warning("🔒 ¡Compuerta cerrada! Indicador cambiado a luz roja en Wokwi.")
             else:
                 st.error(f"Error de conexión MQTT: {res}")
                 
@@ -314,7 +314,7 @@ if pestana == "🏠 Panel de Control e IoT":
 
             res = enviar_mqtt({"dispositivo": "dispensador", "accion": "servir", "porcion": porcion_str, "angulo": angulo_motor, "status": "GREEN"})
             if res is True:
-                st.success(f"📡 ¡Comando detectado! Ración enviada (Ángulo: {angulo_motor}°) y bombillo VERDE encendido en Wokwi.")
+                st.success(f"📡 ¡Comando detectado! Ración enviada al dispositivo con éxito.")
             else:
                 st.error(f"Error al enviar por MQTT: {res}")
         else:
